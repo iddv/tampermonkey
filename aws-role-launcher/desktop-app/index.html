@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>AWS Role Launcher</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🚀 AWS Launcher</h1>
+            <p>Quick access to your AWS accounts and roles</p>
+        </header>
+        
+        <div class="accounts-section">
+            <div class="account-card">
+                <h3>My AWS Account</h3>
+                <p class="account-id">164859598862</p>
+                
+                <div class="roles">
+                    <button class="role-btn readonly" onclick="switchRole('164859598862', 'ReadOnlyRole', 'My AWS Account - ReadOnly')">
+                        👁️ ReadOnly Access
+                    </button>
+                    
+                    <button class="role-btn admin" onclick="switchRole('164859598862', 'AdminRole', 'My AWS Account - Admin')">
+                        🔧 Admin Access
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="quick-actions">
+            <button class="console-btn" onclick="openConsole()">
+                🌐 Open AWS Console
+            </button>
+        </div>
+        
+        <footer>
+            <p>Click any role to open in your default browser</p>
+        </footer>
+    </div>
+    
+    <script src="renderer.js"></script>
+</body>
+</html>

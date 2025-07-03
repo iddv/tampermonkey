@@ -1,0 +1,175 @@
+/* 
+ * LLM Judge Styles
+ * Minimal, clean styling for the userscript UI
+ */
+
+/* Reset and base styles for our components */
+.llm-judge-panel * {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+/* Main panel container */
+.llm-judge-panel {
+  position: fixed !important;
+  top: 20px !important;
+  right: 20px !important;
+  width: 400px !important;
+  max-width: 90vw !important;
+  max-height: 80vh !important;
+  background: white !important;
+  border: 1px solid #ddd !important;
+  border-radius: 8px !important;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.15) !important;
+  z-index: 999999 !important;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+  font-size: 14px !important;
+  line-height: 1.4 !important;
+  overflow: hidden !important;
+}
+
+/* Draggable header */
+.llm-judge-header {
+  background: #4CAF50 !important;
+  color: white !important;
+  padding: 12px 16px !important;
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  font-weight: 500 !important;
+  cursor: move !important;
+  user-select: none !important;
+}
+
+/* Close button */
+.llm-judge-close {
+  background: none !important;
+  border: none !important;
+  color: white !important;
+  font-size: 18px !important;
+  cursor: pointer !important;
+  padding: 0 !important;
+  width: 24px !important;
+  height: 24px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border-radius: 4px !important;
+  transition: background-color 0.2s !important;
+}
+
+.llm-judge-close:hover {
+  background: rgba(255,255,255,0.2) !important;
+}
+
+/* Content area */
+.llm-judge-content {
+  padding: 16px !important;
+  max-height: 60vh !important;
+  overflow-y: auto !important;
+}
+
+/* Loading state */
+.llm-judge-loading {
+  text-align: center !important;
+  padding: 20px !important;
+  color: #666 !important;
+}
+
+/* Spinner animation */
+.llm-judge-spinner {
+  display: inline-block !important;
+  width: 20px !important;
+  height: 20px !important;
+  border: 3px solid #f3f3f3 !important;
+  border-top: 3px solid #4CAF50 !important;
+  border-radius: 50% !important;
+  animation: llm-judge-spin 1s linear infinite !important;
+  margin-right: 8px !important;
+}
+
+@keyframes llm-judge-spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Result display */
+.llm-judge-result {
+  line-height: 1.5 !important;
+}
+
+.llm-judge-meta {
+  background: #f5f5f5 !important;
+  padding: 8px 12px !important;
+  border-radius: 4px !important;
+  margin-bottom: 12px !important;
+  font-size: 12px !important;
+  color: #666 !important;
+}
+
+.llm-judge-text {
+  white-space: pre-wrap !important;
+  word-wrap: break-word !important;
+  color: #333 !important;
+}
+
+/* Action buttons */
+.llm-judge-actions {
+  margin-top: 12px !important;
+  display: flex !important;
+  gap: 8px !important;
+}
+
+.llm-judge-btn {
+  background: #4CAF50 !important;
+  color: white !important;
+  border: none !important;
+  padding: 8px 12px !important;
+  border-radius: 4px !important;
+  cursor: pointer !important;
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  transition: background-color 0.2s !important;
+}
+
+.llm-judge-btn:hover {
+  background: #45a049 !important;
+}
+
+.llm-judge-btn-secondary {
+  background: #f1f1f1 !important;
+  color: #333 !important;
+}
+
+.llm-judge-btn-secondary:hover {
+  background: #e1e1e1 !important;
+}
+
+/* Form elements in dialogs */
+.llm-judge-panel input,
+.llm-judge-panel select,
+.llm-judge-panel textarea {
+  width: 100% !important;
+  padding: 8px !important;
+  border: 1px solid #ddd !important;
+  border-radius: 4px !important;
+  font-size: 14px !important;
+  font-family: inherit !important;
+}
+
+.llm-judge-panel label {
+  display: block !important;
+  margin-bottom: 4px !important;
+  font-weight: 500 !important;
+  color: #333 !important;
+}
+
+/* Responsive design */
+@media (max-width: 480px) {
+  .llm-judge-panel {
+    width: 95vw !important;
+    right: 2.5vw !important;
+    left: 2.5vw !important;
+  }
+}

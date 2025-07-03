@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🚀 AWS Role Launcher</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #232f3e 0%, #1a252f 100%);
+            color: white;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .launcher {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            padding: 30px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 153, 0, 0.2);
+            max-width: 400px;
+            width: 100%;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .header h1 {
+            color: #ff9900;
+            font-size: 28px;
+            margin-bottom: 8px;
+        }
+        
+        .header p {
+            color: #aaa;
+            font-size: 14px;
+        }
+        
+        .account {
+            margin-bottom: 25px;
+        }
+        
+        .account-name {
+            color: #ff9900;
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .account-id {
+            color: #ccc;
+            font-size: 12px;
+            font-family: monospace;
+            margin-bottom: 15px;
+        }
+        
+        .roles {
+            display: grid;
+            gap: 10px;
+        }
+        
+        .role-btn {
+            padding: 14px 18px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+        
+        .role-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+        
+        .readonly {
+            background: #146eb4;
+            color: white;
+        }
+        
+        .readonly:hover {
+            background: #1f7bbf;
+        }
+        
+        .admin {
+            background: #d32f2f;
+            color: white;
+        }
+        
+        .admin:hover {
+            background: #f44336;
+        }
+        
+        .console-btn {
+            background: #ff9900;
+            color: #232f3e;
+        }
+        
+        .console-btn:hover {
+            background: #ffb84d;
+        }
+        
+        .quick-actions {
+            margin-top: 25px;
+            padding-top: 20px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .footer {
+            text-align: center;
+            margin-top: 20px;
+            color: #888;
+            font-size: 12px;
+        }
+        
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 12px 18px;
+            border-radius: 8px;
+            color: white;
+            font-size: 13px;
+            z-index: 1000;
+            animation: slideIn 0.3s ease;
+        }
+        
+        .notification.success {
+            background: #2e7d32;
+        }
+        
+        .notification.error {
+            background: #d32f2f;
+        }
+        
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        
+        @keyframes slideOut {
+            from { transform: translateX(0); opacity: 1; }
+            to { transform: translateX(100%); opacity: 0; }
+        }
+    </style>
+</head>
+<body>
+    <div class="launcher">
+        <div class="header">
+            <h1>🚀 AWS Launcher</h1>
+            <p>Quick access to your AWS accounts and roles</p>
+        </div>
+        
+        <div class="account">
+            <div class="account-name">My AWS Account</div>
+            <div class="account-id">164859598862</div>
+            
+            <div class="roles">
+                <a href="#" class="role-btn readonly" onclick="switchRole('164859598862', 'ReadOnlyRole', 'My AWS Account - ReadOnly')">
+                    👁️ ReadOnly Access
+                </a>
+                
+                <a href="#" class="role-btn admin" onclick="switchRole('164859598862', 'AdminRole', 'My AWS Account - Admin')">
+                    🔧 Admin Access
+                </a>
+            </div>
+        </div>
+        
+        <div class="quick-actions">
+            <a href="https://console.aws.amazon.com/" target="_blank" class="role-btn console-btn" onclick="showNotification('Opening AWS Console...', 'success')">
+                🌐 Open AWS Console
+            </a>
+        </div>
+        
+        <div class="footer">
+            Click any role to open in a new tab
+        </div>
+    </div>
+    
+    <script>
+        function switchRole(accountId, roleName, displayName) {
+            const url = `https://signin.aws.amazon.com/switchrole?account=${accountId}&roleName=${roleName}&displayName=${encodeURIComponent(displayName)}`;
+            window.open(url, '_blank');
+            showNotification(`Opening ${displayName}...`, 'success');
+        }
+        
+        function showNotification(message, type = 'info') {
+            // Remove existing notifications
+            const existing = document.querySelector('.notification');
+            if (existing) {
+                existing.remove();
+            }
+            
+            const notification = document.createElement('div');
+            notification.className = `notification ${type}`;
+            notification.textContent = message;
+            document.body.appendChild(notification);
+            
+            // Auto remove after 3 seconds
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.style.animation = 'slideOut 0.3s ease';
+                    setTimeout(() => {
+                        if (notification.parentNode) {
+                            notification.parentNode.removeChild(notification);
+                        }
+                    }, 300);
+                }
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
