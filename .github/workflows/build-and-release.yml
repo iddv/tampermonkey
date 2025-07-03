@@ -20,11 +20,9 @@ jobs:
       uses: actions/setup-node@v4
       with:
         node-version: '20'
-        cache: 'npm'
-        cache-dependency-path: 'llm-judge/package-lock.json'
 
     - name: Install LLM Judge dependencies
-      run: npm ci --prefix llm-judge
+      run: npm install --prefix llm-judge
 
     - name: Build LLM Judge script
       run: npm run build --prefix llm-judge
@@ -33,7 +31,12 @@ jobs:
       run: |
         mkdir -p dist
         cp aws-role-launcher/aws-role-federation.user.js dist/
-        cp llm-judge/dist/*.user.js dist/llm-judge.user.js 2>/dev/null || echo "LLM Judge build output not found, skipping"
+        # Copy the built LLM Judge script
+        if [ -f llm-judge/dist/llm-judge-userscript.user.js ]; then
+          cp llm-judge/dist/llm-judge-userscript.user.js dist/llm-judge.user.js
+        else
+          echo "Warning: LLM Judge build output not found"
+        fi
 
     - name: Generate Collection Script
       run: |
