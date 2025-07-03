@@ -2,6 +2,15 @@
 
 A monorepo containing various Tampermonkey userscripts and browser automation tools.
 
+## 🚀 One-Click Installation
+
+**[Install All Scripts](https://github.com/iddv/tampermonkey/raw/main/dist/tampermonkey-collection.user.js)** ← Click this link!
+
+Or visit our **[Installation Page](https://iddv.github.io/tampermonkey/)** for a better experience.
+
+### Requirements
+- [Tampermonkey](https://www.tampermonkey.net/) browser extension
+
 ## 📁 Scripts
 
 ### [🚀 AWS Role Launcher](./aws-role-launcher/)
@@ -13,6 +22,8 @@ Quick access to AWS accounts and roles from anywhere - browser bookmarklet, desk
 - Clean, professional interface
 - Support for multiple accounts and roles
 
+**Individual Install**: [aws-role-federation.user.js](https://github.com/iddv/tampermonkey/raw/main/dist/aws-role-federation.user.js)
+
 ### [🧠 LLM Judge](./llm-judge/)
 A focused Tampermonkey script for evaluating web content using Large Language Models (OpenAI GPT, Anthropic Claude).
 
@@ -22,6 +33,8 @@ A focused Tampermonkey script for evaluating web content using Large Language Mo
 - Pre-configured prompts for common tasks
 - Clean, minimal interface
 - Secure API key storage
+
+**Individual Install**: [llm-judge.user.js](https://github.com/iddv/tampermonkey/raw/main/dist/llm-judge.user.js)
 
 ---
 

@@ -1,0 +1,114 @@
+name: Build and Release Userscripts
+
+on:
+  push:
+    branches: [ main ]
+  release:
+    types: [ created ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+        cache-dependency-path: 'llm-judge/package-lock.json'
+
+    - name: Install LLM Judge dependencies
+      run: npm ci --prefix llm-judge
+
+    - name: Build LLM Judge script
+      run: npm run build --prefix llm-judge
+
+    - name: Prepare dist directory
+      run: |
+        mkdir -p dist
+        cp aws-role-launcher/aws-role-federation.user.js dist/
+        cp llm-judge/dist/*.user.js dist/llm-judge.user.js 2>/dev/null || echo "LLM Judge build output not found, skipping"
+
+    - name: Generate Collection Script
+      run: |
+        cat <<'EOF' > dist/tampermonkey-collection.user.js
+        // ==UserScript==
+        // @name         IDDV's Tampermonkey Collection
+        // @namespace    https://github.com/iddv/tampermonkey
+        // @version      1.0.0
+        // @description  One-click installer for AWS Role Launcher and LLM Judge userscripts
+        // @author       IDDV
+        // @match        *://*.amazon.com/*
+        // @match        *://*.amazonaws.com/*
+        // @match        *://*
+        // @grant        GM_setValue
+        // @grant        GM_getValue
+        // @grant        GM_deleteValue
+        // @grant        GM_xmlhttpRequest
+        // @grant        GM_registerMenuCommand
+        // @grant        GM_addStyle
+        // @connect      api.openai.com
+        // @connect      api.anthropic.com
+        // @downloadURL  https://github.com/iddv/tampermonkey/raw/main/dist/tampermonkey-collection.user.js
+        // @updateURL    https://github.com/iddv/tampermonkey/raw/main/dist/tampermonkey-collection.user.js
+        // @require      https://github.com/iddv/tampermonkey/raw/main/dist/aws-role-federation.user.js
+        // @require      https://github.com/iddv/tampermonkey/raw/main/dist/llm-judge.user.js
+        // ==/UserScript==
+
+        (function() {
+            'use strict';
+            
+            // Collection script loaded - individual scripts will initialize themselves
+            console.log('🚀 IDDV Tampermonkey Collection loaded successfully!');
+            console.log('📦 Included scripts: AWS Role Launcher, LLM Judge');
+            
+            // Optional: Add a menu command to show info about loaded scripts
+            if (typeof GM_registerMenuCommand !== 'undefined') {
+                GM_registerMenuCommand('ℹ️ About Collection', () => {
+                    alert('IDDV Tampermonkey Collection v1.0.0\n\nLoaded Scripts:\n• AWS Role Launcher - Quick AWS role switching\n• LLM Judge - AI content evaluation\n\nRepository: https://github.com/iddv/tampermonkey');
+                });
+            }
+        })();
+        EOF
+
+    - name: Commit and push dist files
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git add dist/
+        git diff --staged --quiet || git commit -m "🤖 Auto-build: Update userscript dist files"
+        git push
+
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: userscripts
+        path: dist/
+
+    - name: Create Release and Upload Assets
+      if: startsWith(github.ref, 'refs/tags/')
+      uses: softprops/action-gh-release@v1
+      with:
+        files: |
+          dist/*.user.js
+        body: |
+          ## 🚀 Userscript Release
+          
+          ### One-Click Installation
+          **[Install All Scripts](https://github.com/iddv/tampermonkey/raw/main/dist/tampermonkey-collection.user.js)** ← Click this link!
+          
+          ### Individual Scripts
+          - [AWS Role Launcher](https://github.com/iddv/tampermonkey/raw/main/dist/aws-role-federation.user.js)
+          - [LLM Judge](https://github.com/iddv/tampermonkey/raw/main/dist/llm-judge.user.js)
+          
+          ### Installation Instructions
+          1. Make sure you have [Tampermonkey](https://www.tampermonkey.net/) installed
+          2. Click the "Install All Scripts" link above
+          3. Tampermonkey will open - click "Install"
+          4. Done! Both scripts are now active

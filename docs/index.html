@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IDDV's Tampermonkey Scripts</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+        
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 50px;
+        }
+        
+        .header h1 {
+            font-size: 3rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .header p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+        
+        .install-section {
+            background: white;
+            border-radius: 15px;
+            padding: 40px;
+            margin-bottom: 40px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            text-align: center;
+        }
+        
+        .install-button {
+            display: inline-block;
+            background: linear-gradient(45deg, #4CAF50, #45a049);
+            color: white;
+            padding: 20px 40px;
+            font-size: 1.3rem;
+            font-weight: bold;
+            text-decoration: none;
+            border-radius: 50px;
+            box-shadow: 0 5px 15px rgba(76, 175, 80, 0.4);
+            transition: all 0.3s ease;
+            margin: 20px 0;
+        }
+        
+        .install-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(76, 175, 80, 0.6);
+        }
+        
+        .install-button::before {
+            content: "🚀 ";
+        }
+        
+        .scripts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 30px;
+            margin-top: 40px;
+        }
+        
+        .script-card {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+            transition: transform 0.3s ease;
+        }
+        
+        .script-card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .script-card h3 {
+            color: #4CAF50;
+            font-size: 1.5rem;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .script-card p {
+            color: #666;
+            margin-bottom: 20px;
+        }
+        
+        .features {
+            list-style: none;
+            margin-bottom: 20px;
+        }
+        
+        .features li {
+            padding: 5px 0;
+            color: #555;
+        }
+        
+        .features li::before {
+            content: "✓ ";
+            color: #4CAF50;
+            font-weight: bold;
+        }
+        
+        .individual-install {
+            display: inline-block;
+            background: #f8f9fa;
+            color: #495057;
+            padding: 10px 20px;
+            text-decoration: none;
+            border-radius: 25px;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+            border: 2px solid #e9ecef;
+        }
+        
+        .individual-install:hover {
+            background: #e9ecef;
+            border-color: #4CAF50;
+        }
+        
+        .requirements {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 30px;
+            border-left: 4px solid #4CAF50;
+        }
+        
+        .requirements h4 {
+            color: #4CAF50;
+            margin-bottom: 10px;
+        }
+        
+        .footer {
+            text-align: center;
+            color: white;
+            margin-top: 50px;
+            opacity: 0.8;
+        }
+        
+        .footer a {
+            color: white;
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>IDDV's Tampermonkey Scripts</h1>
+            <p>Powerful userscripts to enhance your browsing experience</p>
+        </div>
+        
+        <div class="install-section">
+            <h2>One-Click Installation</h2>
+            <p>Install all scripts at once with a single click!</p>
+            <a href="https://github.com/iddv/tampermonkey/raw/main/dist/tampermonkey-collection.user.js" class="install-button">
+                Install All Scripts
+            </a>
+            <p><small>Requires <a href="https://www.tampermonkey.net/" target="_blank">Tampermonkey</a> browser extension</small></p>
+        </div>
+        
+        <div class="scripts-grid">
+            <div class="script-card">
+                <h3>🚀 AWS Role Launcher</h3>
+                <p>Quick access to AWS accounts and roles from anywhere - browser bookmarklet, desktop app, and Tampermonkey script.</p>
+                <ul class="features">
+                    <li>One-click AWS role switching</li>
+                    <li>Multiple launcher options</li>
+                    <li>Clean, professional interface</li>
+                    <li>Support for multiple accounts and roles</li>
+                </ul>
+                <a href="https://github.com/iddv/tampermonkey/raw/main/dist/aws-role-federation.user.js" class="individual-install">
+                    Install Only This Script
+                </a>
+            </div>
+            
+            <div class="script-card">
+                <h3>🧠 LLM Judge</h3>
+                <p>A focused Tampermonkey script for evaluating web content using Large Language Models (OpenAI GPT, Anthropic Claude).</p>
+                <ul class="features">
+                    <li>Select text on any webpage and evaluate with AI</li>
+                    <li>Multiple LLM providers (OpenAI, Anthropic)</li>
+                    <li>Pre-configured prompts for common tasks</li>
+                    <li>Clean, minimal interface</li>
+                    <li>Secure API key storage</li>
+                </ul>
+                <a href="https://github.com/iddv/tampermonkey/raw/main/dist/llm-judge.user.js" class="individual-install">
+                    Install Only This Script
+                </a>
+            </div>
+        </div>
+        
+        <div class="requirements">
+            <h4>📋 Requirements</h4>
+            <p><strong>Tampermonkey:</strong> Make sure you have the <a href="https://www.tampermonkey.net/" target="_blank">Tampermonkey browser extension</a> installed first.</p>
+            <p><strong>Installation:</strong> Click any install link above, and Tampermonkey will automatically open the installation dialog.</p>
+            <p><strong>Updates:</strong> Scripts will automatically check for updates when you visit websites they're active on.</p>
+        </div>
+        
+        <div class="footer">
+            <p>
+                Made with ❤️ by IDDV | 
+                <a href="https://github.com/iddv/tampermonkey" target="_blank">View on GitHub</a> | 
+                <a href="https://github.com/iddv/tampermonkey/issues" target="_blank">Report Issues</a>
+            </p>
+        </div>
+    </div>
+</body>
+</html>
