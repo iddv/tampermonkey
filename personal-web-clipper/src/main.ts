@@ -36,7 +36,8 @@ class PersonalWebClipper {
    */
   private setup(): void {
     // Check if we're on a page that likely contains articles
-    if (!this.isClippablePage()) {
+    if (!ReadabilityExtractor.isClippablePage()) {
+      console.log('Web Clipper: Page not suitable for clipping');
       return;
     }
 
@@ -50,52 +51,6 @@ class PersonalWebClipper {
     this.registerMenuCommands();
 
     console.log('Personal Web Clipper loaded successfully');
-  }
-
-  /**
-   * Check if the current page is suitable for clipping
-   */
-  private isClippablePage(): boolean {
-    const url = window.location.href;
-    
-    // Skip certain domains/pages
-    const skipDomains = [
-      'chrome://',
-      'moz-extension://',
-      'chrome-extension://',
-      'about:',
-      'data:',
-      'javascript:'
-    ];
-
-    if (skipDomains.some(domain => url.startsWith(domain))) {
-      return false;
-    }
-
-    // Check for article indicators
-    const articleIndicators = [
-      'article',
-      '.post',
-      '.entry',
-      '.content',
-      '[class*="article"]',
-      '[id*="article"]',
-      // Modern documentation sites
-      '#content-area',
-      '.prose',
-      '.markdown-body',
-      '.documentation',
-      '.docs-content',
-      'main',
-      '[role="main"]',
-      // Framework-specific
-      '.nextra-content',
-      '.docusaurus-content',
-      '.page-inner',
-      '.book-body'
-    ];
-
-    return articleIndicators.some(selector => document.querySelector(selector));
   }
 
   /**
