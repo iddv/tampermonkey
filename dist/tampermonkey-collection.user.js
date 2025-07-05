@@ -2,7 +2,7 @@
 // @name         IDDV's Tampermonkey Collection
 // @namespace    https://github.com/iddv/tampermonkey
 // @version      1.0.0
-// @description  One-click installer for AWS Role Launcher and LLM Judge userscripts
+// @description  One-click installer for AWS Role Launcher, LLM Judge, and Personal Web Clipper userscripts
 // @author       IDDV
 // @match        *://*.amazon.com/*
 // @match        *://*.amazonaws.com/*
@@ -19,6 +19,7 @@
 // @updateURL    https://github.com/iddv/tampermonkey/raw/main/dist/tampermonkey-collection.user.js
 // @require      https://github.com/iddv/tampermonkey/raw/main/dist/aws-role-federation.user.js
 // @require      https://github.com/iddv/tampermonkey/raw/main/dist/llm-judge.user.js
+// @require      https://github.com/iddv/tampermonkey/raw/main/dist/personal-web-clipper.user.js
 // ==/UserScript==
 
 (function() {
@@ -26,12 +27,12 @@
     
     // Collection script loaded - individual scripts will initialize themselves
     console.log('🚀 IDDV Tampermonkey Collection loaded successfully!');
-    console.log('📦 Included scripts: AWS Role Launcher, LLM Judge');
+    console.log('📦 Included scripts: AWS Role Launcher, LLM Judge, Personal Web Clipper');
     
     // Optional: Add a menu command to show info about loaded scripts
     if (typeof GM_registerMenuCommand !== 'undefined') {
         GM_registerMenuCommand('ℹ️ About Collection', () => {
-            alert('IDDV Tampermonkey Collection v1.0.0\n\nLoaded Scripts:\n• AWS Role Launcher - Quick AWS role switching\n• LLM Judge - AI content evaluation\n\nRepository: https://github.com/iddv/tampermonkey');
+            alert('IDDV Tampermonkey Collection v1.0.0\n\nLoaded Scripts:\n• AWS Role Launcher - Quick AWS role switching\n• LLM Judge - AI content evaluation\n• Personal Web Clipper - Save articles to local Markdown files\n\nRepository: https://github.com/iddv/tampermonkey');
         });
     }
 })();
