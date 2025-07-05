@@ -36,6 +36,19 @@ A focused Tampermonkey script for evaluating web content using Large Language Mo
 
 **Individual Install**: [llm-judge.user.js](https://github.com/iddv/tampermonkey/raw/main/dist/llm-judge.user.js)
 
+### [📎 Personal Web Clipper & Organizer](./personal-web-clipper/)
+A powerful Tampermonkey script for clipping web articles and content to local Markdown files using the modern File System Access API.
+
+**Features:**
+- Smart article extraction from any webpage
+- Clean HTML to Markdown conversion with proper formatting
+- Local file storage (no cloud dependencies)
+- File System Access API with download fallback
+- Text selection clipping with context preservation
+- Privacy-focused local-first approach
+
+**Individual Install**: [personal-web-clipper.user.js](https://github.com/iddv/tampermonkey/raw/main/dist/personal-web-clipper.user.js)
+
 ---
 
 ## 🛠️ Development
