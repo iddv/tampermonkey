@@ -37,6 +37,7 @@ jobs:
       run: |
         mkdir -p dist
         cp aws-role-launcher/aws-role-federation.user.js dist/
+        cp youtube-clean-player/youtube-clean-player.user.js dist/
         # Copy the built LLM Judge script
         if [ -f llm-judge/dist/llm-judge-userscript.user.js ]; then
           cp llm-judge/dist/llm-judge-userscript.user.js dist/llm-judge.user.js
@@ -57,7 +58,7 @@ jobs:
         // @name         IDDV's Tampermonkey Collection
         // @namespace    https://github.com/iddv/tampermonkey
         // @version      1.0.0
-        // @description  One-click installer for AWS Role Launcher, LLM Judge, and Personal Web Clipper userscripts
+        // @description  One-click installer for AWS Role Launcher, LLM Judge, Personal Web Clipper, and YouTube Clean Player userscripts
         // @author       IDDV
         // @match        *://*.amazon.com/*
         // @match        *://*.amazonaws.com/*
@@ -75,6 +76,7 @@ jobs:
         // @require      https://github.com/iddv/tampermonkey/raw/main/dist/aws-role-federation.user.js
         // @require      https://github.com/iddv/tampermonkey/raw/main/dist/llm-judge.user.js
         // @require      https://github.com/iddv/tampermonkey/raw/main/dist/personal-web-clipper.user.js
+        // @require      https://github.com/iddv/tampermonkey/raw/main/dist/youtube-clean-player.user.js
         // ==/UserScript==
 
         (function() {
@@ -82,12 +84,12 @@ jobs:
             
             // Collection script loaded - individual scripts will initialize themselves
             console.log('🚀 IDDV Tampermonkey Collection loaded successfully!');
-            console.log('📦 Included scripts: AWS Role Launcher, LLM Judge, Personal Web Clipper');
+            console.log('📦 Included scripts: AWS Role Launcher, LLM Judge, Personal Web Clipper, YouTube Clean Player');
             
             // Optional: Add a menu command to show info about loaded scripts
             if (typeof GM_registerMenuCommand !== 'undefined') {
                 GM_registerMenuCommand('ℹ️ About Collection', () => {
-                    alert('IDDV Tampermonkey Collection v1.0.0\n\nLoaded Scripts:\n• AWS Role Launcher - Quick AWS role switching\n• LLM Judge - AI content evaluation\n• Personal Web Clipper - Save articles to local Markdown files\n\nRepository: https://github.com/iddv/tampermonkey');
+                    alert('IDDV Tampermonkey Collection v1.0.0\n\nLoaded Scripts:\n• AWS Role Launcher - Quick AWS role switching\n• LLM Judge - AI content evaluation\n• Personal Web Clipper - Save articles to local Markdown files\n• YouTube Clean Player - Clean YouTube experience\n\nRepository: https://github.com/iddv/tampermonkey');
                 });
             }
         })();
@@ -123,6 +125,7 @@ jobs:
           - [AWS Role Launcher](https://github.com/iddv/tampermonkey/raw/main/dist/aws-role-federation.user.js)
           - [LLM Judge](https://github.com/iddv/tampermonkey/raw/main/dist/llm-judge.user.js)
           - [Personal Web Clipper](https://github.com/iddv/tampermonkey/raw/main/dist/personal-web-clipper.user.js)
+          - [YouTube Clean Player](https://github.com/iddv/tampermonkey/raw/main/dist/youtube-clean-player.user.js)
           
           ### Installation Instructions
           1. Make sure you have [Tampermonkey](https://www.tampermonkey.net/) installed
