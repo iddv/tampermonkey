@@ -113,10 +113,10 @@ create_lambda_package() {
     cp infrastructure/lambda/model_metadata_utils.py "$lambda_dir/"
     cp infrastructure/lambda/requirements.txt "$lambda_dir/"
     
-    # Install dependencies
-    print_status "Installing Lambda dependencies..."
+    # Install dependencies for ARM64 Linux (Lambda architecture)
+    print_status "Installing Lambda dependencies for ARM64 architecture..."
     cd "$lambda_dir"
-    pip install -r requirements.txt -t .
+    pip install -r requirements.txt -t . --platform linux_aarch64 --only-binary=:all: --upgrade
     
     # Create zip file
     zip -r "../$LAMBDA_ZIP" . > /dev/null
