@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Personal Web Clipper & Organizer
 // @namespace    https://github.com/your-username/tampermonkey-scripts
-// @version      1.1.0
+// @version      1.2.0
 // @author       Tampermonkey Scripts Collection
 // @description  Clip articles and web content to local Markdown files with File System Access API
 // @license      MIT
@@ -697,6 +697,10 @@ ${content}
   class PersonalWebClipper {
     constructor() {
       this.initialized = false;
+      this.contentObserver = null;
+      this.setupRetryCount = 0;
+      this.maxSetupRetries = 10;
+      this.debouncedContentCheck = null;
       this.init();
     }
     /**
@@ -705,57 +709,143 @@ ${content}
     async init() {
       if (this.initialized) return;
       if (document.readyState === "loading") {
-        document.addEventListener("DOMContentLoaded", () => this.setup());
-      } else {
-        this.setup();
+        document.addEventListener("DOMContentLoaded", () => this.init());
+        return;
       }
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      this.setup();
       this.initialized = true;
     }
     /**
-     * Set up the clipper UI and event handlers
+     * Setup the web clipper with retry logic for SPAs
      */
-    setup() {
-      if (!ReadabilityExtractor.isClippablePage()) {
-        console.log("Web Clipper: Page not suitable for clipping");
+    async setup() {
+      console.log("Web Clipper: Setting up...");
+      if (ReadabilityExtractor.isClippablePage()) {
+        console.log("Web Clipper: Content found immediately");
+        this.finalizeSetup();
         return;
       }
+      console.log("Web Clipper: No content found immediately, waiting for SPA content...");
+      const retryDelays = [1e3, 2e3, 3e3, 5e3, 8e3];
+      for (const delay of retryDelays) {
+        if (this.setupRetryCount >= this.maxSetupRetries) {
+          console.log("Web Clipper: Max retries reached, giving up");
+          break;
+        }
+        this.setupRetryCount++;
+        console.log(`Web Clipper: Retry ${this.setupRetryCount} after ${delay}ms...`);
+        await new Promise((resolve) => setTimeout(resolve, delay));
+        ReadabilityExtractor.clearContentCache();
+        if (ReadabilityExtractor.isClippablePage()) {
+          console.log("Web Clipper: Content found after retry");
+          this.finalizeSetup();
+          return;
+        }
+      }
+      this.setupContentObserver();
+    }
+    /**
+     * Set up MutationObserver to watch for content changes (SPA navigation)
+     */
+    setupContentObserver() {
+      console.log("Web Clipper: Setting up content observer for SPA...");
+      this.contentObserver = new MutationObserver((mutations) => {
+        let shouldCheck = false;
+        for (const mutation of mutations) {
+          if (mutation.type === "childList" && mutation.addedNodes.length > 0) {
+            for (const node of mutation.addedNodes) {
+              if (node.nodeType === Node.ELEMENT_NODE) {
+                const element = node;
+                if (element.textContent && element.textContent.length > 100) {
+                  shouldCheck = true;
+                  break;
+                }
+              }
+            }
+          }
+        }
+        if (shouldCheck) {
+          if (this.debouncedContentCheck !== null) {
+            clearTimeout(this.debouncedContentCheck);
+          }
+          this.debouncedContentCheck = setTimeout(() => {
+            this.checkForContent();
+          }, 1e3);
+        }
+      });
+      this.contentObserver.observe(document.body, {
+        childList: true,
+        subtree: true
+      });
+      const rootElement = document.getElementById("root");
+      if (rootElement) {
+        this.contentObserver.observe(rootElement, {
+          childList: true,
+          subtree: true
+        });
+      }
+    }
+    /**
+     * Check for content after DOM changes
+     */
+    checkForContent() {
+      console.log("Web Clipper: Checking for content after DOM changes...");
+      ReadabilityExtractor.clearContentCache();
+      if (ReadabilityExtractor.isClippablePage()) {
+        console.log("Web Clipper: Content found after DOM changes");
+        this.finalizeSetup();
+        if (this.contentObserver) {
+          this.contentObserver.disconnect();
+          this.contentObserver = null;
+        }
+      }
+    }
+    /**
+     * Finalize setup once content is found
+     */
+    finalizeSetup() {
+      console.log("Web Clipper: Finalizing setup");
       ClipperUI.injectUI();
       this.setupEventHandlers();
       this.registerMenuCommands();
-      console.log("Personal Web Clipper loaded successfully");
+      this.trackUsage("page_loaded");
     }
     /**
-     * Set up event handlers for the UI
+     * Setup event handlers
      */
     setupEventHandlers() {
-      document.addEventListener("click", (event) => {
-        const target = event.target;
-        if (target.id === "clip-article") {
-          this.clipArticle();
-        } else if (target.id === "clip-selection") {
-          this.clipSelection();
-        } else if (target.id === "clip-page") {
-          this.clipFullPage();
+      document.addEventListener("keydown", (e) => {
+        if ((e.ctrlKey || e.metaKey) && e.shiftKey) {
+          if (e.key === "C") {
+            e.preventDefault();
+            this.clipArticle();
+          } else if (e.key === "S") {
+            e.preventDefault();
+            this.clipSelection();
+          }
         }
       });
-      document.addEventListener("keydown", (event) => {
-        if ((event.ctrlKey || event.metaKey) && event.shiftKey && event.key === "C") {
-          event.preventDefault();
-          this.clipArticle();
-        }
-        if ((event.ctrlKey || event.metaKey) && event.shiftKey && event.key === "S") {
-          event.preventDefault();
-          this.clipSelection();
+      let lastUrl = window.location.href;
+      const urlObserver = new MutationObserver(() => {
+        if (window.location.href !== lastUrl) {
+          lastUrl = window.location.href;
+          console.log("Web Clipper: URL changed, clearing content cache");
+          ReadabilityExtractor.clearContentCache();
+          if (!ReadabilityExtractor.isClippablePage()) {
+            this.setupContentObserver();
+          }
         }
       });
+      urlObserver.observe(document.body, { childList: true, subtree: true });
     }
     /**
      * Register Tampermonkey menu commands
      */
     registerMenuCommands() {
-      GM_registerMenuCommand("🔧 Clip Current Article", () => this.clipArticle());
-      GM_registerMenuCommand("✂️ Save Selected Text", () => this.clipSelection());
-      GM_registerMenuCommand("🌐 Save Full Page", () => this.clipFullPage());
+      GM_registerMenuCommand("📄 Clip Article", () => this.clipArticle());
+      GM_registerMenuCommand("✂️ Clip Selection", () => this.clipSelection());
+      GM_registerMenuCommand("📋 Clip Full Page", () => this.clipFullPage());
       GM_registerMenuCommand("⚙️ Web Clipper Settings", () => this.showSettings());
     }
     /**
@@ -763,59 +853,55 @@ ${content}
      */
     async clipArticle() {
       try {
+        ClipperUI.showNotification("Extracting article content...", "success");
         const article = ReadabilityExtractor.extractArticle();
         if (!article) {
-          ClipperUI.showNotification("No article content found on this page", "error");
+          ClipperUI.showNotification("❌ No article content found on this page", "error");
           return;
         }
+        const markdown = MarkdownConverter.htmlToMarkdown(document.createElement("div"));
         const tempDiv = document.createElement("div");
         tempDiv.innerHTML = article.content;
-        const markdown = MarkdownConverter.htmlToMarkdown(tempDiv);
+        const markdownContent = MarkdownConverter.htmlToMarkdown(tempDiv);
         const fullMarkdown = MarkdownConverter.createMarkdownDocument(
           article.title,
-          markdown,
+          markdownContent,
           article.url,
           article.timestamp
         );
-        const success = await FileSaver.saveMarkdownFile(fullMarkdown, article.title);
-        if (success) {
-          ClipperUI.showNotification("Article saved successfully!");
-          this.trackUsage("article");
+        const saved = await FileSaver.saveMarkdownFile(fullMarkdown, article.title);
+        if (saved) {
+          ClipperUI.showNotification("✅ Article clipped successfully!", "success");
+          this.trackUsage("article_clipped");
         } else {
-          ClipperUI.showNotification("Article downloaded to your Downloads folder");
-          this.trackUsage("article_fallback");
+          ClipperUI.showNotification("❌ Article clipping was cancelled", "error");
         }
       } catch (error) {
         console.error("Error clipping article:", error);
-        ClipperUI.showNotification("Error clipping article. Please try again.", "error");
+        ClipperUI.showNotification("❌ Error clipping article", "error");
       }
     }
     /**
-     * Clip the currently selected text
+     * Clip selected text
      */
     async clipSelection() {
-      const selectedText = ClipperUI.getSelectedText();
-      if (!selectedText) {
-        ClipperUI.showNotification("Please select some text first", "error");
-        return;
-      }
       try {
+        const selectedText = ClipperUI.getSelectedText();
+        if (!selectedText) {
+          ClipperUI.showNotification("❌ No text selected", "error");
+          return;
+        }
         const context = ClipperUI.getSelectionContext();
-        const success = await FileSaver.saveHighlight(
-          selectedText,
-          context,
-          window.location.href
-        );
-        if (success || !FileSaver.isSupported()) {
-          ClipperUI.showNotification("Selection saved successfully!");
-          this.trackUsage("selection");
+        const saved = await FileSaver.saveHighlight(selectedText, context, window.location.href);
+        if (saved) {
+          ClipperUI.showNotification("✅ Selection clipped successfully!", "success");
+          this.trackUsage("selection_clipped");
         } else {
-          ClipperUI.showNotification("Selection downloaded to your Downloads folder");
-          this.trackUsage("selection_fallback");
+          ClipperUI.showNotification("❌ Selection clipping was cancelled", "error");
         }
       } catch (error) {
-        console.error("Error saving selection:", error);
-        ClipperUI.showNotification("Error saving selection. Please try again.", "error");
+        console.error("Error clipping selection:", error);
+        ClipperUI.showNotification("❌ Error clipping selection", "error");
       }
     }
     /**
@@ -823,101 +909,76 @@ ${content}
      */
     async clipFullPage() {
       try {
-        const article = ReadabilityExtractor.extractArticle();
-        if (article) {
-          ClipperUI.showNotification("Using extracted article content instead of full page");
-          await this.clipArticle();
-          return;
-        }
-        const proceed = confirm(
-          "Full page clipping will include all page content (navigation, ads, etc.) and may be slow. Continue with full page clip?"
-        );
-        if (!proceed) {
-          return;
-        }
-        const title = document.title || "Web Page";
-        const bodyClone = document.body.cloneNode(true);
-        const unwantedSelectors = [
-          "script",
-          "style",
-          "nav",
-          "header",
-          "footer",
-          ".advertisement",
-          ".ad",
-          '[class*="popup"]',
-          '[class*="modal"]',
-          'iframe[src*="ads"]'
-        ];
-        unwantedSelectors.forEach((selector) => {
-          const elements = bodyClone.querySelectorAll(selector);
-          elements.forEach((el) => el.remove());
-        });
-        const content = MarkdownConverter.htmlToMarkdown(bodyClone);
+        ClipperUI.showNotification("Capturing full page...", "success");
+        const title = document.title || "Full Page Capture";
+        const content = document.documentElement.outerHTML;
         const timestamp = (/* @__PURE__ */ new Date()).toISOString();
-        const fullMarkdown = MarkdownConverter.createMarkdownDocument(
-          title + " (Full Page)",
-          content,
-          window.location.href,
-          timestamp
-        );
-        const success = await FileSaver.saveMarkdownFile(fullMarkdown, title + "-fullpage");
-        if (success) {
-          ClipperUI.showNotification("Full page saved successfully!");
-          this.trackUsage("full_page");
+        const markdownContent = `# ${title}
+
+## Full Page HTML Archive
+
+\`\`\`html
+${content}
+\`\`\`
+
+---
+
+**Source:** [${window.location.href}](${window.location.href})  
+**Captured:** ${new Date(timestamp).toLocaleString()}
+**Type:** Full Page HTML Archive
+`;
+        const saved = await FileSaver.saveMarkdownFile(markdownContent, `${title} - Full Page`);
+        if (saved) {
+          ClipperUI.showNotification("✅ Full page captured successfully!", "success");
+          this.trackUsage("full_page_clipped");
         } else {
-          ClipperUI.showNotification("Full page downloaded to your Downloads folder");
-          this.trackUsage("full_page_fallback");
+          ClipperUI.showNotification("❌ Full page capture was cancelled", "error");
         }
       } catch (error) {
-        console.error("Error clipping full page:", error);
-        ClipperUI.showNotification("Error clipping page. Please try again.", "error");
+        console.error("Error capturing full page:", error);
+        ClipperUI.showNotification("❌ Error capturing full page", "error");
       }
     }
     /**
      * Show settings dialog
      */
     showSettings() {
-      const hasFileSystemAccess = FileSaver.isSupported();
       const stats = this.getUsageStats();
-      const message = `
-Personal Web Clipper Settings
+      const isSupported = FileSaver.isSupported();
+      alert(`Personal Web Clipper Settings
 
-File System Access API: ${hasFileSystemAccess ? "✅ Supported" : "❌ Not supported (will use downloads)"}
+Version: 1.2.0
+File System API: ${isSupported ? "✅ Supported" : "❌ Not supported (using download fallback)"}
+Browser: ${navigator.userAgent.split(" ").slice(-1)[0]}
 
 Usage Statistics:
-- Articles clipped: ${stats.article || 0}
-- Selections saved: ${stats.selection || 0}
-- Full pages saved: ${stats.full_page || 0}
+• Pages loaded: ${stats.pages_loaded || 0}
+• Articles clipped: ${stats.articles_clipped || 0}
+• Selections clipped: ${stats.selections_clipped || 0}
+• Full pages captured: ${stats.full_pages_captured || 0}
 
 Keyboard Shortcuts:
-- Ctrl/Cmd + Shift + C: Clip article
-- Ctrl/Cmd + Shift + S: Save selection
+• Ctrl/Cmd + Shift + C: Clip Article
+• Ctrl/Cmd + Shift + S: Clip Selection
 
-Browser Compatibility:
-- File System Access API works in Chrome, Edge, and Opera
-- Other browsers will use download fallback
-    `.trim();
-      alert(message);
+Note: This script only works on pages with article content.
+For complex pages, try "Clip Full Page" option.`);
     }
     /**
-     * Track usage statistics
+     * Track usage for statistics
      */
     trackUsage(action) {
       const stats = this.getUsageStats();
-      stats[action] = (stats[action] || 0) + 1;
+      const key = action.replace("_", "_");
+      stats[key] = (stats[key] || 0) + 1;
       GM_setValue("usage_stats", JSON.stringify(stats));
     }
     /**
      * Get usage statistics
      */
     getUsageStats() {
-      try {
-        const stats = GM_getValue("usage_stats", "{}");
-        return JSON.parse(stats);
-      } catch {
-        return {};
-      }
+      const stored = GM_getValue("usage_stats", "{}");
+      return JSON.parse(stored);
     }
   }
   new PersonalWebClipper();
