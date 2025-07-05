@@ -24,14 +24,18 @@
 (function () {
   'use strict';
 
-  class ReadabilityExtractor {
+  const _ReadabilityExtractor = class _ReadabilityExtractor {
     /**
      * Extract the main article content from the current page
      */
     static extractArticle() {
       try {
         const title = this.extractTitle();
-        const content = this.extractMainContent();
+        const contentElement = this.findContentElement();
+        if (!contentElement) {
+          return null;
+        }
+        const content = this.processContentElement(contentElement);
         if (!content || content.trim().length < 100) {
           return null;
         }
@@ -45,6 +49,64 @@
         console.error("Error extracting article:", error);
         return null;
       }
+    }
+    /**
+     * Find the main content element using prioritized selector list
+     * Returns the element directly, or null if no suitable element is found
+     * Implements caching to avoid double-scanning the DOM
+     */
+    static findContentElement() {
+      if (this.cachedContentElement !== void 0) {
+        return this.cachedContentElement;
+      }
+      for (const selector of this.CONTENT_SELECTORS) {
+        const element = document.querySelector(selector);
+        if (element && this.isElementSuitable(element)) {
+          console.log(`Web Clipper: Content found using selector: ${selector}`);
+          this.cachedContentElement = element;
+          return element;
+        }
+      }
+      console.log("Web Clipper: No suitable content element found");
+      this.cachedContentElement = null;
+      return null;
+    }
+    /**
+     * Clears the cached content element. Should be called on SPA navigation.
+     */
+    static clearContentCache() {
+      this.cachedContentElement = void 0;
+    }
+    /**
+     * Check if an element is suitable for content extraction
+     * Combines visibility check and significant text content check
+     */
+    static isElementSuitable(element) {
+      if (!this.isElementVisible(element)) {
+        return false;
+      }
+      return this.hasSignificantTextContent(element);
+    }
+    /**
+     * Check if an element is visible (not hidden by CSS)
+     */
+    static isElementVisible(element) {
+      return !!(element.offsetWidth || element.offsetHeight || element.getClientRects().length);
+    }
+    /**
+     * Check if an element has significant text content
+     */
+    static hasSignificantTextContent(element) {
+      const text = element.textContent || "";
+      return text.trim().length > 200;
+    }
+    /**
+     * Process a content element to extract its HTML content
+     */
+    static processContentElement(contentElement) {
+      const clonedElement = contentElement.cloneNode(true);
+      this.cleanElement(clonedElement);
+      return clonedElement.innerHTML || "";
     }
     /**
      * Extract the page title
@@ -67,56 +129,6 @@
         }
       }
       return document.title || "Untitled Article";
-    }
-    /**
-     * Extract the main content of the article
-     */
-    static extractMainContent() {
-      const contentSelectors = [
-        "article",
-        '[role="main"]',
-        ".entry-content",
-        ".post-content",
-        ".article-content",
-        ".content",
-        "#content",
-        "main",
-        // Modern documentation sites
-        "#content-area",
-        "#content-container",
-        ".prose",
-        ".markdown-body",
-        ".documentation",
-        ".docs-content",
-        // Framework-specific selectors
-        '[data-component-part="step-content"]',
-        ".nextra-content",
-        ".docusaurus-content",
-        // GitBook and similar
-        ".page-inner",
-        ".book-body"
-      ];
-      let contentElement = null;
-      for (const selector of contentSelectors) {
-        const element = document.querySelector(selector);
-        if (element && this.hasSignificantTextContent(element)) {
-          contentElement = element;
-          break;
-        }
-      }
-      if (!contentElement) {
-        return "";
-      }
-      const clonedElement = contentElement.cloneNode(true);
-      this.cleanElement(clonedElement);
-      return clonedElement.innerHTML || "";
-    }
-    /**
-     * Check if an element has significant text content
-     */
-    static hasSignificantTextContent(element) {
-      const text = element.textContent || "";
-      return text.trim().length > 200;
     }
     /**
      * Clean up the element by removing unwanted elements
@@ -144,7 +156,64 @@
         elements.forEach((el) => el.remove());
       });
     }
-  }
+    /**
+     * Check if the current page is suitable for clipping
+     * This is now just a wrapper around findContentElement for backward compatibility
+     */
+    static isClippablePage() {
+      const url = window.location.href;
+      const skipDomains = [
+        "chrome://",
+        "moz-extension://",
+        "chrome-extension://",
+        "about:",
+        "data:",
+        "javascript:"
+      ];
+      if (skipDomains.some((domain) => url.startsWith(domain))) {
+        return false;
+      }
+      return this.findContentElement() !== null;
+    }
+  };
+  _ReadabilityExtractor.cachedContentElement = void 0;
+  _ReadabilityExtractor.CONTENT_SELECTORS = [
+    // --- OpenAI & modern documentation sites (highest priority) ---
+    ".PageContent",
+    // OpenAI docs main content area
+    ".prose",
+    // Common Tailwind CSS class for articles
+    // --- High-confidence, semantic selectors ---
+    "article",
+    "main",
+    '[role="main"]',
+    // --- Modern documentation sites ---
+    "#content-area",
+    "#content-container",
+    ".markdown-body",
+    // GitHub-style markdown
+    ".documentation",
+    ".docs-content",
+    // --- Framework-specific selectors ---
+    '[data-component-part="step-content"]',
+    ".nextra-content",
+    // Next.js docs
+    ".docusaurus-content",
+    // Docusaurus
+    // --- GitBook and similar ---
+    ".page-inner",
+    ".book-body",
+    // --- Common CMS patterns ---
+    ".entry-content",
+    ".post-content",
+    ".article-content",
+    ".article-body",
+    // --- Generic fallbacks (lower confidence) ---
+    "#content",
+    ".content",
+    "#main-content"
+  ];
+  let ReadabilityExtractor = _ReadabilityExtractor;
   class MarkdownConverter {
     /**
      * Convert HTML element to Markdown using recursive approach
@@ -646,52 +715,14 @@ ${content}
      * Set up the clipper UI and event handlers
      */
     setup() {
-      if (!this.isClippablePage()) {
+      if (!ReadabilityExtractor.isClippablePage()) {
+        console.log("Web Clipper: Page not suitable for clipping");
         return;
       }
       ClipperUI.injectUI();
       this.setupEventHandlers();
       this.registerMenuCommands();
       console.log("Personal Web Clipper loaded successfully");
-    }
-    /**
-     * Check if the current page is suitable for clipping
-     */
-    isClippablePage() {
-      const url = window.location.href;
-      const skipDomains = [
-        "chrome://",
-        "moz-extension://",
-        "chrome-extension://",
-        "about:",
-        "data:",
-        "javascript:"
-      ];
-      if (skipDomains.some((domain) => url.startsWith(domain))) {
-        return false;
-      }
-      const articleIndicators = [
-        "article",
-        ".post",
-        ".entry",
-        ".content",
-        '[class*="article"]',
-        '[id*="article"]',
-        // Modern documentation sites
-        "#content-area",
-        ".prose",
-        ".markdown-body",
-        ".documentation",
-        ".docs-content",
-        "main",
-        '[role="main"]',
-        // Framework-specific
-        ".nextra-content",
-        ".docusaurus-content",
-        ".page-inner",
-        ".book-body"
-      ];
-      return articleIndicators.some((selector) => document.querySelector(selector));
     }
     /**
      * Set up event handlers for the UI
