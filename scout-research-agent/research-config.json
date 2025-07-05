@@ -1,199 +1,26 @@
 {
-  "version": "2.0.0",
-  "description": "Tampermonkey Scripts Research Configuration - Enhanced with Strands Agents",
-  
-  "decomposition_strategy": {
-    "model": "gpt-4o-mini",
-    "temperature": 0.3,
-    "max_tokens": 500,
-    "default_sub_topic_count": 4,
-    "prompt_template": "Break down this research project into specific, focused sub-topics for deep research.\nEach sub-topic should be:\n1. Specific and actionable\n2. Researchable with web search\n3. Focused on a single aspect\n4. Likely to yield concrete insights\n\nReturn ONLY a JSON array of sub-topic strings.",
-    "fallback_topics": [
-      "Current userscript development best practices",
-      "Browser extension security and performance",
-      "Modern web automation techniques",
-      "User interface optimization for browser tools",
-      "Cross-browser compatibility strategies"
-    ]
-  },
-
-  "research_prompts": {
-    "worker_prompt_template": "You are a specialized research agent conducting deep research on browser automation and userscript development topics.\n\nYour research approach:\n1. Use web_search to find current, authoritative information about browser extensions, userscripts, and web automation\n2. Use extract_article_content to get detailed information from key sources\n3. Synthesize findings into comprehensive insights\n4. Always cite sources with URLs\n5. Provide confidence assessments for your findings\n\nFocus on quality over quantity - find the most relevant and current information for browser automation and userscript development.",
-    
-    "research_objectives": [
-      "Find current trends in browser automation and userscript development",
-      "Identify specific implementation approaches for cross-browser compatibility",
-      "Discover relevant tools and frameworks for browser extension development",
-      "Understand common security challenges and proven solutions",
-      "Provide actionable recommendations for modern userscript development",
-      "Assess performance optimization techniques for browser tools"
-    ],
-    
-    "output_format_requirements": "Structure your research findings clearly:\n1. Start with an executive summary\n2. Provide detailed findings with sources\n3. End with specific, actionable recommendations\n4. Include confidence level for each major finding\n5. Cite all sources with URLs\n6. Highlight any limitations or areas needing further research",
-    
-    "max_iterations": 8
-  },
-
+  "version": "1.0.0",
   "projects": [
     {
-      "name": "AWS Role Launcher",
-      "description": "Quick access to AWS accounts and roles from anywhere - browser bookmarklet, desktop app, and Tampermonkey script with one-click role switching",
-      "project_type": "Browser Extension/Bookmarklet",
-      "platform": "JavaScript, HTML, CSS, AWS IAM",
-      "research_topic": "AWS IAM Role Management and Browser Security",
+      "name": "Test Project",
+      "description": "A simple test project to verify the research pipeline",
+      "research_topic": "Modern web development practices",
       "known_issues": [
-        "Role switching could be faster with better caching",
-        "UI could be more responsive on slower networks",
-        "Need better error handling for expired credentials",
-        "Mobile browser compatibility needs improvement"
+        "Need to understand current trends"
       ],
       "focus_areas": [
-        "AWS IAM role federation best practices",
-        "Browser security for credential management",
-        "Cross-browser compatibility optimization",
-        "Performance optimization for role switching",
-        "Modern JavaScript patterns for browser extensions",
-        "UI/UX improvements for professional tools"
-      ]
-    },
-    {
-      "name": "LLM Judge",
-      "description": "Tampermonkey script for evaluating web content using Large Language Models (OpenAI GPT, Anthropic Claude) with text selection and AI evaluation capabilities",
-      "project_type": "AI-Powered Browser Extension",
-      "platform": "JavaScript, OpenAI API, Anthropic API",
-      "research_topic": "AI Integration in Browser Extensions",
-      "known_issues": [
-        "API rate limiting needs better handling",
-        "Response time could be improved for large text selections",
-        "Need better error messaging for API failures",
-        "Context preservation for long documents needs work"
-      ],
-      "focus_areas": [
-        "AI API integration best practices for browser extensions",
-        "Efficient text processing and chunking strategies",
-        "Rate limiting and error handling patterns",
-        "Secure API key management in browser context",
-        "Performance optimization for AI-powered features",
-        "User experience design for AI interactions"
-      ]
-    },
-    {
-      "name": "Personal Web Clipper",
-      "description": "Powerful Tampermonkey script for clipping web articles to local Markdown files using File System Access API with smart article extraction",
-      "project_type": "Content Management Tool",
-      "platform": "JavaScript, File System Access API, Markdown",
-      "research_topic": "Modern Web Content Extraction and Local Storage",
-      "known_issues": [
-        "Article extraction accuracy varies by website",
-        "File System Access API has limited browser support",
-        "Need better handling of complex page layouts",
-        "Markdown conversion could preserve more formatting"
-      ],
-      "focus_areas": [
-        "Advanced content extraction techniques",
-        "File System Access API best practices and fallbacks",
-        "HTML to Markdown conversion optimization",
-        "Cross-browser storage solutions",
-        "Article parsing for modern web frameworks",
-        "Privacy-focused local-first architectures"
-      ]
-    },
-    {
-      "name": "YouTube Clean Player",
-      "description": "Performant userscript enhancing YouTube viewing experience with configurable distraction removal, smart Shorts handling, and SPA navigation",
-      "project_type": "Media Enhancement Tool",
-      "platform": "JavaScript, YouTube API, DOM manipulation",
-      "research_topic": "YouTube Enhancement and Video Platform Optimization",
-      "known_issues": [
-        "YouTube's frequent UI changes break functionality",
-        "SPA navigation detection needs improvement",
-        "Performance impact on page load needs optimization",
-        "Keyboard shortcuts conflict with YouTube's shortcuts"
-      ],
-      "focus_areas": [
-        "Robust DOM manipulation for dynamic content",
-        "SPA navigation handling best practices",
-        "Performance optimization for media platforms",
-        "YouTube API integration techniques",
-        "User preference management and persistence",
-        "Conflict resolution with platform shortcuts"
-      ]
-    },
-    {
-      "name": "Tampermonkey Development Framework",
-      "description": "Modern development workflow and framework for creating maintainable, testable userscripts with TypeScript support and automated building",
-      "project_type": "Development Tooling",
-      "platform": "TypeScript, Node.js, Webpack, Jest",
-      "research_topic": "Modern Userscript Development Practices",
-      "known_issues": [
-        "Build process could be more streamlined",
-        "Testing framework needs better DOM simulation",
-        "TypeScript integration needs improvement",
-        "Hot reloading for development is inconsistent"
-      ],
-      "focus_areas": [
-        "Modern JavaScript tooling for userscript development",
-        "TypeScript best practices for browser extensions",
-        "Testing strategies for DOM manipulation scripts",
-        "Build optimization and bundling techniques",
-        "Development workflow automation",
-        "Code quality and maintainability patterns"
+        "Performance optimization",
+        "Security best practices"
       ]
     }
   ],
-
-  "research_guidelines": {
-    "minimum_confidence_score": 0.7,
-    "max_findings_per_sub_topic": 5,
-    "focus_on_actionable_items": true,
-    "prioritize_security_and_performance": true,
-    "include_modern_best_practices": true,
-    "require_source_citations": true,
-    "preferred_source_types": [
-      "MDN Web Docs and browser documentation",
-      "Official extension and userscript guides",
-      "Technical blogs from browser vendors",
-      "Open source userscript repositories",
-      "Web security and performance research",
-      "Modern JavaScript and TypeScript documentation"
-    ]
+  "decomposition_strategy": {
+    "model": "openai/gpt-4o-mini",
+    "temperature": 0.3,
+    "max_tokens": 1000,
+    "default_sub_topic_count": 4
   },
-
-  "synthesis_settings": {
-    "note": "Enhanced synthesis with manifest-checking pattern (no fixed delays)",
-    "synthesis_model": "anthropic.claude-3-sonnet-20240229-v1:0",
-    "max_report_length": 5000,
-    "minimum_completion_rate": 0.8,
-    "max_retries": 6,
-    "retry_interval_minutes": 5,
-    "comprehensive_report_sections": [
-      "Executive Summary",
-      "Key Findings by Project",
-      "Cross-Project Patterns and Insights",
-      "Recommended Action Items",
-      "Browser Technology Trends",
-      "Implementation Roadmap Suggestions",
-      "Research Quality Assessment"
-    ]
-  },
-  
-  "api_configuration": {
-    "note": "API keys are stored in AWS Parameter Store for security - NEVER put actual keys in this public repo",
-    "parameter_store_keys": {
-      "openai_api_key": "/research-bot/openai-api-key",
-      "tavily_api_key": "/research-bot/tavily-api-key"
-    },
-    "bedrock_models": {
-      "research_model": "anthropic.claude-3-haiku-20240307-v1:0",
-      "synthesis_model": "anthropic.claude-3-sonnet-20240229-v1:0"
-    }
-  },
-  
-  "monitoring_and_alerts": {
-    "note": "CloudWatch monitoring configuration",
-    "dead_letter_queue_alarm_threshold": 1,
-    "synthesis_failure_alarm_enabled": true,
-    "research_completion_timeout_hours": 2,
-    "expected_daily_research_runs": 1
+  "research_prompts": {
+    "worker_prompt_template": "You are a specialized research agent. Conduct thorough research on the given topic and provide actionable insights with source citations."
   }
-} 
+}

@@ -10,6 +10,10 @@ import requests
 # Strands Agents imports
 from strands import Agent, tool
 
+# OpenRouter model provider and metadata utilities
+from openrouter_model import OpenRouterModel, POPULAR_MODELS
+from model_metadata_utils import get_context_limit_for_model, log_metadata_status, is_metadata_from_fallback
+
 # Initialize AWS clients
 s3_client = boto3.client('s3')
 ssm_client = boto3.client('ssm')
@@ -18,6 +22,9 @@ ssm_client = boto3.client('ssm')
 S3_BUCKET = os.environ['S3_BUCKET']
 BEDROCK_MODEL_ID = os.environ.get('BEDROCK_MODEL_ID', 'anthropic.claude-3-haiku-20240307-v1:0')
 TAVILY_API_KEY_PARAM = os.environ.get('TAVILY_API_KEY_PARAM', '/research-bot/tavily-api-key')
+OPENROUTER_API_KEY_PARAM = os.environ.get('OPENROUTER_API_KEY_PARAM', '/research-bot/openrouter-api-key')
+OPENROUTER_MODEL_ID = os.environ.get('OPENROUTER_MODEL_ID', 'anthropic/claude-3-haiku')
+MODEL_PROVIDER = os.environ.get('MODEL_PROVIDER', 'bedrock')  # 'bedrock' or 'openrouter'
 ENVIRONMENT = os.environ['ENVIRONMENT']
 PROJECT_NAME = os.environ['PROJECT_NAME']
 
@@ -214,6 +221,61 @@ def get_tavily_api_key() -> str:
     except Exception as e:
         raise ResearchAutomationError(f"Failed to retrieve Tavily API key: {str(e)}")
 
+def get_openrouter_api_key() -> str:
+    """
+    Retrieve OpenRouter API key from Parameter Store
+    """
+    try:
+        response = ssm_client.get_parameter(
+            Name=OPENROUTER_API_KEY_PARAM,
+            WithDecryption=True
+        )
+        return response['Parameter']['Value']
+    except Exception as e:
+        raise ResearchAutomationError(f"Failed to retrieve OpenRouter API key: {str(e)}")
+
+def create_research_model():
+    """
+    Create the appropriate model based on MODEL_PROVIDER configuration.
+    Returns the model instance for Agent initialization with enhanced retry logic.
+    """
+    try:
+        # Log metadata status for observability
+        log_metadata_status()
+        
+        if MODEL_PROVIDER.lower() == 'openrouter':
+            # Use OpenRouter model
+            api_key = get_openrouter_api_key()
+            
+            # Get dynamic context limit for the model
+            context_limit = get_context_limit_for_model(OPENROUTER_MODEL_ID, default=4096)
+            
+            # Create OpenRouter model instance with enhanced configuration
+            openrouter_model = OpenRouterModel(
+                api_key=api_key,
+                model=OPENROUTER_MODEL_ID,
+                max_tokens=min(4096, context_limit // 4),  # Reserve 3/4 for input
+                temperature=0.7,
+                timeout=30
+            )
+            
+            # Log metadata source for debugging
+            using_fallback = is_metadata_from_fallback()
+            print(f"Created OpenRouter model: {OPENROUTER_MODEL_ID}")
+            print(f"Context limit: {context_limit}, Using fallback metadata: {using_fallback}")
+            
+            return openrouter_model
+        else:
+            # Use Bedrock model (default)
+            print(f"Using Bedrock model: {BEDROCK_MODEL_ID}")
+            return f"bedrock:{BEDROCK_MODEL_ID}"
+            
+    except Exception as e:
+        print(f"Error creating research model: {str(e)}")
+        # Fall back to Bedrock
+        print(f"Falling back to Bedrock model: {BEDROCK_MODEL_ID}")
+        return f"bedrock:{BEDROCK_MODEL_ID}"
+
 def conduct_enhanced_research(
     sub_topic: str,
     search_queries: List[str],
@@ -234,6 +296,9 @@ def conduct_enhanced_research(
         sub_topic, search_queries, project_name, original_project, research_prompts
     )
     
+    # Create the appropriate model based on configuration
+    research_model = create_research_model()
+    
     # Initialize enhanced Strands research agent with updated tools
     research_agent = Agent(
         system_prompt=system_prompt,
@@ -241,7 +306,7 @@ def conduct_enhanced_research(
             lambda query, max_results=10: web_search(query, search_params, max_results),
             extract_article_content
         ],
-        model=f"bedrock:{BEDROCK_MODEL_ID}",
+        model=research_model,
         max_iterations=research_prompts.get('max_iterations', 8)
     )
     
@@ -294,7 +359,13 @@ Begin your research now."""
             'timestamp': datetime.now(timezone.utc).isoformat(),
             'configVersion': config_version,
             'executionTimeSeconds': round(execution_time, 2),
-            'agentModel': BEDROCK_MODEL_ID,
+            'modelProvider': MODEL_PROVIDER,
+            'agentModel': OPENROUTER_MODEL_ID if MODEL_PROVIDER.lower() == 'openrouter' else BEDROCK_MODEL_ID,
+            'contextLimit': get_context_limit_for_model(
+                OPENROUTER_MODEL_ID if MODEL_PROVIDER.lower() == 'openrouter' else BEDROCK_MODEL_ID, 
+                default=200000
+            ),
+            'usingFallbackMetadata': is_metadata_from_fallback(),
             'framework': 'strands-agents-enhanced'
         },
         'structuredFindings': structured_findings,

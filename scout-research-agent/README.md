@@ -1,6 +1,6 @@
 # Scout Research Agent - Deep Research Bot for Tampermonkey Scripts
 
-An enhanced AI-powered research automation system designed to provide deep insights into your tampermonkey scripts and browser automation projects. This guide will help you deploy the research bot to AWS EU-West-1 region.
+An enhanced AI-powered research automation system with **multi-provider model support** designed to provide deep insights into your tampermonkey scripts and browser automation projects. Now supports both AWS Bedrock and OpenRouter (400+ models) with automatic fallback and cost optimization.
 
 ## 📁 What's This Directory?
 
@@ -12,6 +12,50 @@ This `scout-research-agent` directory contains a complete AWS-based research aut
 - **Uses modern AWS services** (Lambda, SQS, S3) with enterprise-grade security
 
 **Separate from your tampermonkey scripts**: This research system is completely independent of your actual userscripts and can be deployed to any AWS account.
+
+## 🤖 Enhanced Multi-Provider AI Architecture
+
+### Model Provider Options
+
+**🌐 OpenRouter (Default)** 🆕
+- **Access to 400+ models** from Anthropic, OpenAI, Google, Meta, and more
+- **Dynamic context window management** - automatically adapts to each model's capabilities
+- **Real-time pricing optimization** - automatically uses cost-effective models
+- **Automatic model metadata updates** - always knows about the latest models
+- **Intelligent fallback** - seamlessly switches to Bedrock if OpenRouter has issues
+- **Enhanced observability** - detailed logging of model provider performance
+
+**🏛️ AWS Bedrock (Fallback)**
+- Claude 3 Haiku for cost-effective research workers
+- Claude 3 Sonnet for high-quality synthesis  
+- Built-in regional availability and enterprise security
+- Reliable, predictable performance
+
+### Switching Between Providers
+
+**Default Setup**: Uses OpenRouter (cutting-edge models, cost-effective)
+```bash
+# Current configuration in Lambda environment variables:
+MODEL_PROVIDER=openrouter
+```
+
+**Fallback to Bedrock**: For maximum reliability (enterprise-grade)
+```bash
+# Update Lambda environment variable via AWS Console:
+MODEL_PROVIDER=bedrock
+
+# Or via CLI:
+aws lambda update-function-configuration \
+  --function-name tampermonkey-research-worker-prod \
+  --environment Variables='{MODEL_PROVIDER=bedrock,...}' \
+  --region eu-west-1
+```
+
+### Cost Comparison Examples
+- **Bedrock Claude Haiku**: ~$0.25 per 1M input tokens
+- **OpenRouter Claude Haiku**: ~$0.25 per 1M input tokens  
+- **OpenRouter DeepSeek V3**: ~$0.27 per 1M input tokens (95% performance, 90% cost)
+- **OpenRouter Gemini Flash (Free)**: $0 per 1M tokens (rate limited)
 
 ## 🚀 Quick Start
 
@@ -45,8 +89,8 @@ Your research bot is pre-configured for:
    ```
 
 4. **API Keys**
-   - OpenAI API Key (for research decomposition)
    - Tavily API Key (for web search)
+   - OpenRouter API Key (for multi-model access and research decomposition)
 
 ## 🔧 Deployment Steps
 
@@ -156,8 +200,8 @@ Your research bot is configured to analyze:
 2. **API keys not working**
    ```bash
    # Verify parameters are set
-   aws ssm get-parameter --name "/research-bot/openai-api-key" --region eu-west-1 --with-decryption
    aws ssm get-parameter --name "/research-bot/tavily-api-key" --region eu-west-1 --with-decryption
+   aws ssm get-parameter --name "/research-bot/openrouter-api-key" --region eu-west-1 --with-decryption
    ```
 
 3. **Research not running**
@@ -169,6 +213,21 @@ Your research bot is configured to analyze:
 4. **GitHub config not found**
    - Ensure `research-config.json` is in your repository root
    - Check GitHub API URL format: `https://api.github.com/repos/iddv/tampermonkey/contents/research-config.json`
+
+5. **OpenRouter integration issues**
+   ```bash
+   # Check if using OpenRouter
+   aws lambda get-function-configuration --function-name tampermonkey-research-worker-prod --region eu-west-1 | jq '.Environment.Variables.MODEL_PROVIDER'
+   
+   # Check model metadata status
+   aws ssm get-parameter --name "/research-bot/model-metadata" --region eu-west-1 | jq '.Parameter.Value | fromjson | .data | length'
+   
+   # Manually trigger metadata update
+   aws lambda invoke --function-name tampermonkey-research-metadata-updater-prod --region eu-west-1 response.json
+   
+   # Check for fallback usage in logs
+   aws logs filter-log-events --log-group-name "/aws/lambda/tampermonkey-research-worker-prod" --region eu-west-1 --filter-pattern "fallback"
+   ```
 
 ## 💰 Cost Optimization
 
@@ -246,20 +305,30 @@ Your enhanced research bot now includes:
 - S3 and SQS server-side encryption
 - No VPC deployment (avoids $32/month NAT Gateway costs)
 
+**🤖 Multi-Provider AI Intelligence:** 🆕
+- **Dual provider support**: AWS Bedrock + OpenRouter (400+ models)
+- **Dynamic context management**: Automatically adapts to each model's capabilities
+- **Intelligent fallback**: Seamless switching between providers
+- **Real-time model metadata**: Hourly updates of model capabilities and pricing
+- **Cost optimization**: Automatic selection of cost-effective models
+
 **⚡ Performance Optimized:**
 - ARM64 architecture for 20% better price/performance
 - Enhanced research decomposition with structured meta-prompts
 - Manifest-checking pattern for 99%+ reliability
+- **Retry logic with exponential backoff** for API resilience
 
 **📊 Production Monitoring:**
 - CloudWatch alarms for errors, duration, and queue depth
 - Automatic log cleanup (30-day retention)
 - Dead Letter Queue monitoring
+- **Enhanced observability**: Model provider tracking, fallback detection, metadata status
 - Ready for Cost Anomaly Detection
 
 **💰 Cost Efficient:**
 - Expected cost: $0-5/month (within AWS free tier)
 - Optimized Lambda timeouts and memory allocation
 - Reserved concurrency limits for cost control
+- **OpenRouter cost savings**: Access to cheaper models while maintaining quality
 
 Your enhanced research bot is now ready to provide deep insights into your tampermonkey scripts and browser automation projects! 🚀 

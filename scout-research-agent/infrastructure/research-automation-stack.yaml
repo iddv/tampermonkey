@@ -7,45 +7,28 @@ Parameters:
     Default: dev
     AllowedValues: [dev, staging, prod]
     Description: Environment name
-    
+
   ProjectName:
     Type: String
     Default: research-automation
     Description: Project name used for resource naming
-    
+
   GitHubRepoUrl:
     Type: String
     Description: GitHub repository URL for configuration (must be public)
     Default: "https://api.github.com/repos/yourusername/yourrepo/contents"
-    
+
   ResearchScheduleExpression:
     Type: String
     Default: "cron(0 9 * * ? *)"
     Description: CloudWatch Events schedule for research orchestrator (daily at 9 AM UTC)
-    
+
   SynthesisScheduleExpression:
     Type: String
     Default: "cron(30 9 * * ? *)"
     Description: CloudWatch Events schedule for synthesis (30 minutes after research - fallback only)
 
 Resources:
-  # Enhanced Parameter Store entries for API keys
-  OpenAIApiKeyParameter:
-    Type: AWS::SSM::Parameter
-    Properties:
-      Name: !Sub "/research-bot/openai-api-key"
-      Type: SecureString
-      Value: "REPLACE_WITH_YOUR_OPENAI_API_KEY"
-      Description: "OpenAI API key for research decomposition"
-      
-  TavilyApiKeyParameter:
-    Type: AWS::SSM::Parameter
-    Properties:
-      Name: !Sub "/research-bot/tavily-api-key" 
-      Type: SecureString
-      Value: "REPLACE_WITH_YOUR_TAVILY_API_KEY"
-      Description: "Tavily API key for web search"
-
   # Enhanced S3 bucket with structured paths and encryption
   ResearchS3Bucket:
     Type: AWS::S3::Bucket
@@ -71,21 +54,22 @@ Resources:
             NoncurrentVersionExpirationInDays: 30
           - Id: TransitionToIA
             Status: Enabled
-            TransitionInDays: 30
-            StorageClass: STANDARD_IA
+            Transitions:
+              - TransitionInDays: 30
+                StorageClass: STANDARD_IA
 
   # Enhanced SQS queue with DLQ and encryption
   ResearchTasksQueue:
     Type: AWS::SQS::Queue
     Properties:
       QueueName: !Sub "${ProjectName}-research-tasks-${Environment}"
-      VisibilityTimeoutSeconds: 960  # 16 minutes (slightly longer than Lambda timeout)
+      VisibilityTimeout: 960  # 16 minutes (slightly longer than Lambda timeout)
       MessageRetentionPeriod: 1209600  # 14 days
       SqsManagedSseEnabled: true  # Enable server-side encryption
       RedrivePolicy:
         deadLetterTargetArn: !GetAtt ResearchTasksDLQ.Arn
         maxReceiveCount: 3
-      
+
   ResearchTasksDLQ:
     Type: AWS::SQS::Queue
     Properties:
@@ -116,7 +100,7 @@ Resources:
                 Action:
                   - s3:PutObject
                 Resource:
-                  - !Sub "${ResearchS3Bucket}/research/*"
+                  - !Sub "${ResearchS3Bucket.Arn}/research/*"
               - Effect: Allow
                 Action:
                   - sqs:SendMessage
@@ -126,7 +110,7 @@ Resources:
                 Action:
                   - ssm:GetParameter
                 Resource:
-                  - !Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/research-bot/openai-api-key"
+                  - !Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/research-bot/openrouter-api-key"
 
   # Enhanced IAM role for research workers
   ResearchWorkerRole:
@@ -151,8 +135,8 @@ Resources:
                 Action:
                   - s3:PutObject
                 Resource:
-                  - !Sub "${ResearchS3Bucket}/research/*/success/*"
-                  - !Sub "${ResearchS3Bucket}/research/*/failed/*"
+                  - !Sub "${ResearchS3Bucket.Arn}/research/*/success/*"
+                  - !Sub "${ResearchS3Bucket.Arn}/research/*/failed/*"
               - Effect: Allow
                 Action:
                   - sqs:ReceiveMessage
@@ -164,10 +148,11 @@ Resources:
                   - ssm:GetParameter
                 Resource:
                   - !Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/research-bot/tavily-api-key"
+                  - !Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/research-bot/openrouter-api-key"
               - Effect: Allow
                 Action:
                   - bedrock:InvokeModel
-                Resource: 
+                Resource:
                   - !Sub "arn:aws:bedrock:${AWS::Region}::foundation-model/anthropic.claude-3-haiku-20240307-v1:0"
                   - !Sub "arn:aws:bedrock:${AWS::Region}::foundation-model/anthropic.claude-3-sonnet-20240229-v1:0"
 
@@ -195,27 +180,29 @@ Resources:
                   - s3:GetObject
                   - s3:ListBucket
                 Resource:
-                  - !Sub "${ResearchS3Bucket}/research/*"
-                  - !Sub "${ResearchS3Bucket}"
+                  - !Sub "${ResearchS3Bucket.Arn}/research/*"
+                  - !Sub "${ResearchS3Bucket.Arn}"
               - Effect: Allow
                 Action:
                   - s3:PutObject
                 Resource:
-                  - !Sub "${ResearchS3Bucket}/synthesis/*"
+                  - !Sub "${ResearchS3Bucket.Arn}/synthesis/*"
               - Effect: Allow
                 Action:
                   - ssm:GetParameter
                 Resource:
-                  - !Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/research-bot/openai-api-key"
+                  - !Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/research-bot/openrouter-api-key"
               - Effect: Allow
                 Action:
                   - bedrock:InvokeModel
-                Resource: 
+                Resource:
                   - !Sub "arn:aws:bedrock:${AWS::Region}::foundation-model/anthropic.claude-3-sonnet-20240229-v1:0"
               - Effect: Allow
                 Action:
                   - lambda:InvokeFunction
                 Resource: !Sub "arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${ProjectName}-synthesis-${Environment}"
+
+
 
   # Enhanced Lambda function - Research Orchestrator
   ResearchOrchestratorFunction:
@@ -229,11 +216,7 @@ Resources:
       MemorySize: 1024
       Architectures:
         - arm64  # Use ARM64 for better price/performance
-      Code:
-        ZipFile: |
-          # Placeholder - deploy actual code from infrastructure/lambda/research_function.py
-          def lambda_handler(event, context):
-              return {"statusCode": 200, "body": "Placeholder function"}
+      Code: ../research-function.zip
       Environment:
         Variables:
           S3_BUCKET: !Ref ResearchS3Bucket
@@ -241,8 +224,8 @@ Resources:
           GITHUB_REPO_URL: !Ref GitHubRepoUrl
           ENVIRONMENT: !Ref Environment
           PROJECT_NAME: !Ref ProjectName
-          OPENAI_API_KEY_PARAM: "/research-bot/openai-api-key"
-      
+          OPENROUTER_API_KEY_PARAM: "/research-bot/openrouter-api-key"
+
   # Enhanced Lambda function - Research Worker
   ResearchWorkerFunction:
     Type: AWS::Lambda::Function
@@ -253,19 +236,18 @@ Resources:
       Role: !GetAtt ResearchWorkerRole.Arn
       Timeout: 900  # 15 minutes
       MemorySize: 1024
-      ReservedConcurrencyLimit: 5  # Limit concurrent workers to manage costs
+      ReservedConcurrentExecutions: 5  # Limit concurrent workers to manage costs
       Architectures:
         - arm64  # Use ARM64 for better price/performance
-      Code:
-        ZipFile: |
-          # Placeholder - deploy actual code from infrastructure/lambda/worker_function.py
-          def lambda_handler(event, context):
-              return {"statusCode": 200, "body": "Placeholder function"}
+      Code: ../research-function.zip
       Environment:
         Variables:
           S3_BUCKET: !Ref ResearchS3Bucket
           BEDROCK_MODEL_ID: "anthropic.claude-3-haiku-20240307-v1:0"
           TAVILY_API_KEY_PARAM: "/research-bot/tavily-api-key"
+          OPENROUTER_API_KEY_PARAM: "/research-bot/openrouter-api-key"
+          OPENROUTER_MODEL_ID: "anthropic/claude-3-haiku"
+          MODEL_PROVIDER: "openrouter"
           ENVIRONMENT: !Ref Environment
           PROJECT_NAME: !Ref ProjectName
 
@@ -281,18 +263,19 @@ Resources:
       MemorySize: 2048  # More memory for synthesis
       Architectures:
         - arm64  # Use ARM64 for better price/performance
-      Code:
-        ZipFile: |
-          # Placeholder - deploy actual code from infrastructure/lambda/synthesis_function.py
-          def lambda_handler(event, context):
-              return {"statusCode": 200, "body": "Placeholder function"}
+      Code: ../research-function.zip
       Environment:
         Variables:
           S3_BUCKET: !Ref ResearchS3Bucket
           SYNTHESIS_BEDROCK_MODEL_ID: "anthropic.claude-3-sonnet-20240229-v1:0"
+          OPENROUTER_API_KEY_PARAM: "/research-bot/openrouter-api-key"
+          SYNTHESIS_OPENROUTER_MODEL_ID: "anthropic/claude-3-sonnet"
+          MODEL_PROVIDER: "openrouter"
           GITHUB_REPO_URL: !Ref GitHubRepoUrl
           ENVIRONMENT: !Ref Environment
           PROJECT_NAME: !Ref ProjectName
+
+
 
   # SQS event source mapping for worker function
   WorkerEventSourceMapping:
@@ -345,6 +328,8 @@ Resources:
       Principal: events.amazonaws.com
       SourceArn: !GetAtt SynthesisScheduleRule.Arn
 
+
+
   # CloudWatch Log Groups with retention policies
   OrchestratorLogGroup:
     Type: AWS::Logs::LogGroup
@@ -363,6 +348,8 @@ Resources:
     Properties:
       LogGroupName: !Sub "/aws/lambda/${ProjectName}-synthesis-${Environment}"
       RetentionInDays: 30  # Automatic log cleanup to control costs
+
+
 
   # Enhanced CloudWatch Alarms for monitoring
   DLQAlarm:
@@ -484,10 +471,13 @@ Outputs:
     Export:
       Name: !Sub "${AWS::StackName}-SynthesisArn"
 
-  ParameterStoreInstructions:
-    Description: "Instructions for setting up API keys"
-    Value: !Sub |
-      1. Set OpenAI API key: aws ssm put-parameter --name "/research-bot/openai-api-key" --value "YOUR_OPENAI_KEY" --type "SecureString" --overwrite
-      2. Set Tavily API key: aws ssm put-parameter --name "/research-bot/tavily-api-key" --value "YOUR_TAVILY_KEY" --type "SecureString" --overwrite
 
- 
+
+  ParameterStoreInstructions:
+    Description: "Instructions for setting up API keys and configuration"
+    Value: !Sub |
+      1. Set Tavily API key: aws ssm put-parameter --name "/research-bot/tavily-api-key" --value "YOUR_TAVILY_KEY" --type "SecureString" --overwrite
+      2. Set OpenRouter API key (REQUIRED): aws ssm put-parameter --name "/research-bot/openrouter-api-key" --value "YOUR_OPENROUTER_KEY" --type "SecureString" --overwrite
+      3. System is configured to use OpenRouter by default (MODEL_PROVIDER=openrouter)
+      4. To fallback to Bedrock: Update Lambda environment variable MODEL_PROVIDER from "openrouter" to "bedrock"
+

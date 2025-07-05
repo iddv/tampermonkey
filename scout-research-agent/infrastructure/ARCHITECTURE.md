@@ -15,11 +15,11 @@ CloudWatch Events → Research Orchestrator → SQS → Research Workers → S3
 
 ### **1. Research Orchestrator Lambda**
 - **Trigger**: CloudWatch Events (daily at 9 AM UTC)
-- **Function**: Fetches GitHub config, decomposes projects using OpenAI, queues research tasks
+- **Function**: Fetches GitHub config, decomposes projects using OpenRouter, queues research tasks
 - **Output**: Individual research tasks in SQS + manifest file in S3
 
 **Key Features:**
-- Intelligent topic decomposition using OpenAI
+- Intelligent topic decomposition using OpenRouter
 - Optimized search query generation for Tavily API
 - Human-readable S3 path structure
 - Manifest creation for synthesis coordination
@@ -107,7 +107,7 @@ reports/
 ### **Parameter Store Structure**
 ```
 /research-bot/
-├── openai-api-key (SecureString)
+├── openrouter-api-key (SecureString)
 └── tavily-api-key (SecureString)
 ```
 
@@ -147,7 +147,7 @@ reports/
 aws configure
 
 # Get API keys
-# - OpenAI API key from platform.openai.com
+# - OpenRouter API key from openrouter.ai
 # - Tavily API key from tavily.com (1000 free searches/month)
 ```
 
@@ -165,8 +165,8 @@ aws cloudformation deploy \
 
 # Set API keys in Parameter Store
 aws ssm put-parameter \
-  --name "/research-bot/openai-api-key" \
-  --value "YOUR_OPENAI_API_KEY" \
+  --name "/research-bot/openrouter-api-key" \
+  --value "YOUR_OPENROUTER_API_KEY" \
   --type "SecureString" \
   --overwrite
 

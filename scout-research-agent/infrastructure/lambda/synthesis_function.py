@@ -9,6 +9,10 @@ import time
 # Strands Agents imports
 from strands import Agent, tool
 
+# OpenRouter model provider and metadata utilities
+from openrouter_model import OpenRouterModel, POPULAR_MODELS
+from model_metadata_utils import get_context_limit_for_model, log_metadata_status, is_metadata_from_fallback
+
 # Initialize AWS clients
 s3_client = boto3.client('s3')
 ssm_client = boto3.client('ssm')
@@ -16,6 +20,9 @@ ssm_client = boto3.client('ssm')
 # Environment variables
 S3_BUCKET = os.environ['S3_BUCKET']
 BEDROCK_MODEL_ID = os.environ.get('SYNTHESIS_BEDROCK_MODEL_ID', 'anthropic.claude-3-sonnet-20240229-v1:0')
+OPENROUTER_API_KEY_PARAM = os.environ.get('OPENROUTER_API_KEY_PARAM', '/research-bot/openrouter-api-key')
+OPENROUTER_MODEL_ID = os.environ.get('SYNTHESIS_OPENROUTER_MODEL_ID', 'anthropic/claude-3-sonnet')
+MODEL_PROVIDER = os.environ.get('MODEL_PROVIDER', 'bedrock')  # 'bedrock' or 'openrouter'
 GITHUB_REPO_URL = os.environ['GITHUB_REPO_URL']
 ENVIRONMENT = os.environ['ENVIRONMENT']
 PROJECT_NAME = os.environ['PROJECT_NAME']
@@ -272,6 +279,61 @@ def fetch_research_config() -> Dict[str, Any]:
     except Exception as e:
         raise SynthesisError(f"Failed to fetch research config: {str(e)}")
 
+def get_openrouter_api_key() -> str:
+    """
+    Retrieve OpenRouter API key from Parameter Store
+    """
+    try:
+        response = ssm_client.get_parameter(
+            Name=OPENROUTER_API_KEY_PARAM,
+            WithDecryption=True
+        )
+        return response['Parameter']['Value']
+    except Exception as e:
+        raise SynthesisError(f"Failed to retrieve OpenRouter API key: {str(e)}")
+
+def create_synthesis_model():
+    """
+    Create the appropriate model based on MODEL_PROVIDER configuration.
+    Returns the model instance for Agent initialization with enhanced configuration.
+    """
+    try:
+        # Log metadata status for observability
+        log_metadata_status()
+        
+        if MODEL_PROVIDER.lower() == 'openrouter':
+            # Use OpenRouter model for synthesis
+            api_key = get_openrouter_api_key()
+            
+            # Get dynamic context limit for the synthesis model
+            context_limit = get_context_limit_for_model(OPENROUTER_MODEL_ID, default=8192)
+            
+            # Create OpenRouter model instance with enhanced configuration
+            openrouter_model = OpenRouterModel(
+                api_key=api_key,
+                model=OPENROUTER_MODEL_ID,
+                max_tokens=min(8192, context_limit // 3),  # Reserve 2/3 for input (synthesis needs more context)
+                temperature=0.3,  # Lower temperature for more consistent synthesis
+                timeout=60  # Longer timeout for synthesis
+            )
+            
+            # Log metadata source for debugging
+            using_fallback = is_metadata_from_fallback()
+            print(f"Created OpenRouter synthesis model: {OPENROUTER_MODEL_ID}")
+            print(f"Context limit: {context_limit}, Using fallback metadata: {using_fallback}")
+            
+            return openrouter_model
+        else:
+            # Use Bedrock model (default)
+            print(f"Using Bedrock synthesis model: {BEDROCK_MODEL_ID}")
+            return f"bedrock:{BEDROCK_MODEL_ID}"
+            
+    except Exception as e:
+        print(f"Error creating synthesis model: {str(e)}")
+        # Fall back to Bedrock
+        print(f"Falling back to Bedrock synthesis model: {BEDROCK_MODEL_ID}")
+        return f"bedrock:{BEDROCK_MODEL_ID}"
+
 def find_most_recent_run(date_str: str) -> Optional[str]:
     """
     Find the most recent research run for a given date
@@ -411,6 +473,9 @@ def generate_enhanced_comprehensive_report(
     # Build enhanced synthesis prompt
     system_prompt = build_enhanced_synthesis_prompt(synthesis_settings, completion_status)
     
+    # Create the appropriate model based on configuration
+    synthesis_model = create_synthesis_model()
+    
     # Initialize enhanced Strands synthesis agent
     synthesis_agent = Agent(
         system_prompt=system_prompt,
@@ -419,7 +484,7 @@ def generate_enhanced_comprehensive_report(
             read_s3_research_file,
             lambda run_id=run_id, date_str=date_str: check_research_manifest(run_id, date_str)
         ],
-        model=f"bedrock:{synthesis_settings.get('synthesis_model', BEDROCK_MODEL_ID)}",
+        model=synthesis_model,
         max_iterations=12
     )
     
@@ -462,7 +527,13 @@ If research is incomplete, clearly note what's missing and adjust confidence acc
             'totalResearchFiles': completion_status['success_count'],
             'failedResearchFiles': completion_status['failed_count'],
             'projectsAnalyzed': len(set(completion_status.get('manifest', {}).get('expectedFiles', []))),
-            'synthesisModel': synthesis_settings.get('synthesis_model', BEDROCK_MODEL_ID),
+            'modelProvider': MODEL_PROVIDER,
+            'synthesisModel': OPENROUTER_MODEL_ID if MODEL_PROVIDER.lower() == 'openrouter' else BEDROCK_MODEL_ID,
+            'contextLimit': get_context_limit_for_model(
+                OPENROUTER_MODEL_ID if MODEL_PROVIDER.lower() == 'openrouter' else BEDROCK_MODEL_ID, 
+                default=200000
+            ),
+            'usingFallbackMetadata': is_metadata_from_fallback(),
             'framework': 'strands-agents-enhanced',
             'overallConfidenceScore': extract_confidence_score(str(synthesis_result)),
             'synthesisVersion': '2.0'

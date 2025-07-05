@@ -15,7 +15,7 @@ sqs_client = boto3.client('sqs')
 
 # Environment variables
 S3_BUCKET = os.environ['S3_BUCKET']
-OPENAI_API_KEY_PARAM = os.environ.get('OPENAI_API_KEY_PARAM', '/research-bot/openai-api-key')
+OPENROUTER_API_KEY_PARAM = os.environ.get('OPENROUTER_API_KEY_PARAM', '/research-bot/openrouter-api-key')
 GITHUB_REPO_URL = os.environ['GITHUB_REPO_URL']
 ENVIRONMENT = os.environ['ENVIRONMENT']
 PROJECT_NAME = os.environ['PROJECT_NAME']
@@ -28,7 +28,7 @@ class ResearchAutomationError(Exception):
 def lambda_handler(event, context):
     """
     Enhanced research coordination with intelligent topic decomposition
-    Reads decomposition strategies from GitHub and uses OpenAI for topic breakdown
+    Reads decomposition strategies from GitHub and uses OpenRouter for topic breakdown
     """
     try:
         # Generate unique run ID
@@ -41,8 +41,8 @@ def lambda_handler(event, context):
         # Get research configuration from GitHub
         research_config = fetch_research_config()
         
-        # Get OpenAI API key
-        openai_api_key = get_openai_api_key()
+        # Get OpenRouter API key
+        openrouter_api_key = get_openrouter_api_key()
         
         # Send decomposed sub-topics to SQS for parallel processing
         total_sub_topics = 0
@@ -58,7 +58,7 @@ def lambda_handler(event, context):
                 sub_topics_with_queries = decompose_research_with_search_queries(
                     project_config, 
                     research_config.get('decomposition_strategy', {}),
-                    openai_api_key
+                    openrouter_api_key
                 )
                 
                 print(f"Generated {len(sub_topics_with_queries)} enhanced sub-topics for {project_name}")
@@ -202,18 +202,18 @@ def fetch_research_config() -> Dict[str, Any]:
     except json.JSONDecodeError as e:
         raise ResearchAutomationError(f"Invalid JSON in research config: {str(e)}")
 
-def get_openai_api_key() -> str:
+def get_openrouter_api_key() -> str:
     """
-    Retrieve OpenAI API key from Parameter Store
+    Retrieve OpenRouter API key from Parameter Store
     """
     try:
         response = ssm_client.get_parameter(
-            Name=OPENAI_API_KEY_PARAM,
+            Name=OPENROUTER_API_KEY_PARAM,
             WithDecryption=True
         )
         return response['Parameter']['Value']
     except Exception as e:
-        raise ResearchAutomationError(f"Failed to retrieve OpenAI API key: {str(e)}")
+        raise ResearchAutomationError(f"Failed to retrieve OpenRouter API key: {str(e)}")
 
 def decompose_research_with_search_queries(
     project_config: Dict[str, Any], 
@@ -224,7 +224,14 @@ def decompose_research_with_search_queries(
     Enhanced decomposition that generates both sub-topics and optimized search queries
     """
     try:
-        client = openai.OpenAI(api_key=api_key)
+        client = openai.OpenAI(
+            api_key=api_key,
+            base_url="https://openrouter.ai/api/v1",
+            default_headers={
+                "HTTP-Referer": "https://github.com/your-repo/scout-research-agent",
+                "X-Title": "Scout Research Agent"
+            }
+        )
         
         # Enhanced structured meta-prompt for high-quality research decomposition
         base_prompt = decomposition_strategy.get('prompt_template', """
@@ -291,7 +298,7 @@ Search Query Guidelines:
 """
         
         response = client.chat.completions.create(
-            model=decomposition_strategy.get('model', 'gpt-4o-mini'),
+            model=decomposition_strategy.get('model', 'openai/gpt-4o-mini'),
             messages=[{"role": "user", "content": decomposition_prompt}],
             max_tokens=decomposition_strategy.get('max_tokens', 1000),
             temperature=decomposition_strategy.get('temperature', 0.3)

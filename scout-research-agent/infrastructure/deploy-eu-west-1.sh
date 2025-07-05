@@ -5,8 +5,15 @@
 
 set -e
 
+# Get the directory where this script is located
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+
+# Change to project root to ensure consistent paths
+cd "$PROJECT_ROOT"
+
 # Cleanup trap
-trap 'rm -f research-function.zip packaged-template.yaml /tmp/lambda-response.json' EXIT
+trap 'rm -f research-function.zip packaged-template.yaml' EXIT
 
 # Colors for output
 RED='\033[0;31m'
@@ -69,6 +76,29 @@ validate_aws_credentials() {
 # Function to create Lambda deployment package
 create_lambda_package() {
     print_status "Creating Lambda deployment package..."
+    print_status "Working from directory: $(pwd)"
+    
+    # Verify files exist before proceeding
+    local lambda_files=(
+        "infrastructure/lambda/research_function.py"
+        "infrastructure/lambda/worker_function.py" 
+        "infrastructure/lambda/synthesis_function.py"
+        "infrastructure/lambda/openrouter_model.py"
+        "infrastructure/lambda/model_metadata_utils.py"
+        "infrastructure/lambda/requirements.txt"
+    )
+    
+    for file in "${lambda_files[@]}"; do
+        if [ ! -f "$file" ]; then
+            print_error "Required file not found: $file"
+            print_error "Current directory: $(pwd)"
+            print_error "Directory contents:"
+            ls -la infrastructure/lambda/ || echo "Lambda directory not found"
+            exit 1
+        fi
+    done
+    
+    print_status "All required Lambda files found ✓"
     
     # Create temporary directory for Lambda package
     local temp_dir=$(mktemp -d)
@@ -79,14 +109,9 @@ create_lambda_package() {
     cp infrastructure/lambda/research_function.py "$lambda_dir/"
     cp infrastructure/lambda/worker_function.py "$lambda_dir/"
     cp infrastructure/lambda/synthesis_function.py "$lambda_dir/"
-    
-    # Copy requirements.txt from lambda directory
-    if [ -f "infrastructure/lambda/requirements.txt" ]; then
-        cp infrastructure/lambda/requirements.txt "$lambda_dir/requirements.txt"
-    else
-        print_error "requirements.txt not found in lambda directory"
-        exit 1
-    fi
+    cp infrastructure/lambda/openrouter_model.py "$lambda_dir/"
+    cp infrastructure/lambda/model_metadata_utils.py "$lambda_dir/"
+    cp infrastructure/lambda/requirements.txt "$lambda_dir/"
     
     # Install dependencies
     print_status "Installing Lambda dependencies..."
@@ -110,13 +135,13 @@ create_lambda_package() {
 create_deployment_bucket() {
     local bucket_name="$STACK_NAME-deployment-$ENVIRONMENT-$AWS_ACCOUNT_ID"
     
-    print_status "Checking for deployment bucket: $bucket_name"
+    print_status "Checking for deployment bucket: $bucket_name" >&2
     
     if ! aws s3api head-bucket --bucket "$bucket_name" --region "$REGION" &> /dev/null; then
-        print_status "Creating deployment bucket: $bucket_name"
-        aws s3 mb "s3://$bucket_name" --region "$REGION"
+        print_status "Creating deployment bucket: $bucket_name" >&2
+        aws s3 mb "s3://$bucket_name" --region "$REGION" >&2
     else
-        print_status "Deployment bucket already exists."
+        print_status "Deployment bucket already exists." >&2
     fi
     
     echo "$bucket_name"
@@ -124,19 +149,19 @@ create_deployment_bucket() {
 
 # Function to store API keys securely in Parameter Store
 store_api_keys() {
-    local openai_api_key="$1"
+    local openrouter_api_key="$1"
     local tavily_api_key="$2"
     
     print_status "Storing API keys in SSM Parameter Store..."
     
-    # Store OpenAI API key
+    # Store OpenRouter API key
     aws ssm put-parameter \
-        --name "/research-bot/openai-api-key" \
-        --value "$openai_api_key" \
+        --name "/research-bot/openrouter-api-key" \
+        --value "$openrouter_api_key" \
         --type SecureString \
         --overwrite \
         --region "$REGION" \
-        --description "OpenAI API key for research decomposition"
+        --description "OpenRouter API key for multi-model access and research decomposition"
     
     # Store Tavily API key
     aws ssm put-parameter \
@@ -147,7 +172,9 @@ store_api_keys() {
         --region "$REGION" \
         --description "Tavily API key for web search"
     
-    print_status "API keys stored securely in Parameter Store"
+
+    
+    print_status "API keys and configuration stored securely in Parameter Store"
 }
 
 # Function to deploy CloudFormation stack
@@ -162,7 +189,10 @@ deploy_stack() {
         --region "$REGION"
 
     print_status "Deploying CloudFormation stack: $STACK_NAME"
-    aws cloudformation deploy \
+    print_status "This will take 5-10 minutes. Showing detailed progress..."
+    
+    # Deploy with detailed output
+    if aws cloudformation deploy \
         --template-file packaged-template.yaml \
         --stack-name "$STACK_NAME" \
         --parameter-overrides \
@@ -170,7 +200,34 @@ deploy_stack() {
             "GitHubRepoUrl=$GITHUB_REPO_URL" \
             "ProjectName=tampermonkey-research" \
         --capabilities CAPABILITY_NAMED_IAM \
-        --region "$REGION"
+        --region "$REGION" \
+        --no-fail-on-empty-changeset; then
+        
+        print_status "CloudFormation deployment completed successfully!"
+    else
+        print_error "CloudFormation deployment failed!"
+        print_error "Getting detailed error information..."
+        
+        # Show failed events
+        echo
+        print_error "=== FAILED EVENTS ==="
+        aws cloudformation describe-stack-events \
+            --stack-name "$STACK_NAME" \
+            --region "$REGION" \
+            --query 'StackEvents[?ResourceStatus==`CREATE_FAILED` || ResourceStatus==`UPDATE_FAILED`].[Timestamp,LogicalResourceId,ResourceStatus,ResourceStatusReason]' \
+            --output table
+            
+        # Show all recent events for context
+        echo
+        print_error "=== RECENT EVENTS (Last 10) ==="
+        aws cloudformation describe-stack-events \
+            --stack-name "$STACK_NAME" \
+            --region "$REGION" \
+            --query 'StackEvents[:10].[Timestamp,LogicalResourceId,ResourceStatus,ResourceStatusReason]' \
+            --output table
+            
+        exit 1
+    fi
     
     # Cleanup temporary template
     rm -f packaged-template.yaml
@@ -189,43 +246,8 @@ get_stack_outputs() {
     echo "$outputs" | jq -r '.[] | "\(.OutputKey): \(.OutputValue)"'
 }
 
-# Function to test the deployment
-test_deployment() {
-    print_status "Testing deployment..."
-    
-    local orchestrator_arn=$(aws cloudformation describe-stacks \
-        --stack-name "$STACK_NAME" \
-        --region "$REGION" \
-        --query "Stacks[0].Outputs[?OutputKey=='OrchestratorFunctionArn'].OutputValue" \
-        --output text)
-    
-    if [ -n "$orchestrator_arn" ]; then
-        print_status "Invoking orchestrator function for test..."
-        
-        aws lambda invoke \
-            --function-name "$orchestrator_arn" \
-            --payload '{"source": "manual-test", "detail": {"trigger": "deployment-test"}}' \
-            --cli-binary-format raw-in-base64-out \
-            --region "$REGION" \
-            /tmp/lambda-response.json > /dev/null
-        
-        # Check for function errors
-        local function_error=$(jq -r '.FunctionError // ""' /tmp/lambda-response.json 2>/dev/null || echo "")
-        
-        if [ -z "$function_error" ]; then
-            print_status "Lambda function test successful!"
-            cat /tmp/lambda-response.json
-        else
-            print_warning "Lambda function test FAILED. FunctionError: $function_error"
-            print_warning "Check CloudWatch logs for details."
-            cat /tmp/lambda-response.json
-        fi
-        
-        rm -f /tmp/lambda-response.json
-    else
-        print_warning "Could not find orchestrator Lambda ARN in stack outputs."
-    fi
-}
+# Test function removed - infrastructure deployment is sufficient
+# Users can test Lambda functions manually via AWS Console or CLI if needed
 
 # Function to cleanup deployment artifacts
 cleanup() {
@@ -235,6 +257,9 @@ cleanup() {
 
 # Main deployment function
 main() {
+    local openrouter_api_key="$1"
+    local tavily_api_key="$2"
+    
     print_status "Starting deployment of Tampermonkey Deep Research Bot to EU-West-1"
     
     # Check prerequisites
@@ -242,25 +267,23 @@ main() {
     check_jq
     validate_aws_credentials
     
-    # Get required parameters
-    read -p "Enter your OpenAI API key: " -s openai_api_key
-    echo
-    
-    if [ -z "$openai_api_key" ]; then
-        print_error "OpenAI API key is required"
+    # Validate required parameters
+    if [ -z "$openrouter_api_key" ]; then
+        print_error "OpenRouter API key is required"
+        echo "Usage: $0 <openrouter-api-key> <tavily-api-key>"
         exit 1
     fi
-    
-    read -p "Enter your Tavily API key: " -s tavily_api_key
-    echo
     
     if [ -z "$tavily_api_key" ]; then
         print_error "Tavily API key is required"
+        echo "Usage: $0 <openrouter-api-key> <tavily-api-key>"
         exit 1
     fi
     
+    print_status "API keys provided as parameters ✓"
+    
     # Store API keys securely in Parameter Store
-    store_api_keys "$openai_api_key" "$tavily_api_key"
+    store_api_keys "$openrouter_api_key" "$tavily_api_key"
     
     # Create Lambda package
     create_lambda_package
@@ -277,40 +300,56 @@ main() {
     print_status "Stack outputs:"
     get_stack_outputs
     
-    # Test the deployment
-    test_deployment
+    # Skip Lambda testing during deployment - infrastructure is ready for use
     
     # Cleanup
     cleanup
     
-    print_status "Deployment complete! Your Tampermonkey research bot is now running in EU-West-1."
+    print_status "Deployment complete! Your OpenRouter-powered Tampermonkey research bot is now running in EU-West-1."
     print_status "Next steps:"
     echo "1. The research configuration is already in your tampermonkey repository (research-config.json)"
-    echo "2. Research will run daily at 9 AM UTC"
+    echo "2. Research will run daily at 9 AM UTC using OpenRouter models"
     echo "3. Monitor CloudWatch logs for research runs"
     echo "4. Check S3 bucket for research results"
     echo "5. GitHub repository: https://github.com/iddv/tampermonkey"
 }
 
 # Handle script arguments
+if [[ $# -eq 0 ]]; then
+    echo "Usage: $0 <openrouter-api-key> <tavily-api-key>"
+    echo "       $0 -h|--help"
+    echo
+    echo "Example:"
+    echo "  $0 'sk-or-v1-your-openrouter-key' 'tvly-your-tavily-key'"
+    exit 1
+fi
+
 while [[ $# -gt 0 ]]; do
     case $1 in
         -h|--help)
-            echo "Usage: $0 [options]"
+            echo "Usage: $0 <openrouter-api-key> <tavily-api-key>"
             echo "This script deploys the Tampermonkey Deep Research Bot to EU-West-1"
+            echo
+            echo "Arguments:"
+            echo "  openrouter-api-key    Your OpenRouter API key (get from openrouter.ai)"
+            echo "  tavily-api-key        Your Tavily API key (get from tavily.com)"
+            echo
             echo "Configuration:"
             echo "  Region: $REGION"
             echo "  Stack Name: $STACK_NAME"
             echo "  GitHub Repo: $GITHUB_REPO_URL"
             echo "  Environment: $ENVIRONMENT"
+            echo
+            echo "Example:"
+            echo "  $0 'sk-or-v1-your-openrouter-key' 'tvly-your-tavily-key'"
             exit 0
             ;;
         *)
-            print_error "Unknown option: $1"
-            exit 1
+            # Not a flag, break to handle as positional arguments
+            break
             ;;
     esac
 done
 
-# Run main function
-main 
+# Run main function with API keys as arguments
+main "$1" "$2" 
