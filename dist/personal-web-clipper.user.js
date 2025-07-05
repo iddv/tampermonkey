@@ -80,7 +80,21 @@
         ".article-content",
         ".content",
         "#content",
-        "main"
+        "main",
+        // Modern documentation sites
+        "#content-area",
+        "#content-container",
+        ".prose",
+        ".markdown-body",
+        ".documentation",
+        ".docs-content",
+        // Framework-specific selectors
+        '[data-component-part="step-content"]',
+        ".nextra-content",
+        ".docusaurus-content",
+        // GitBook and similar
+        ".page-inner",
+        ".book-body"
       ];
       let contentElement = null;
       for (const selector of contentSelectors) {
@@ -662,7 +676,20 @@ ${content}
         ".entry",
         ".content",
         '[class*="article"]',
-        '[id*="article"]'
+        '[id*="article"]',
+        // Modern documentation sites
+        "#content-area",
+        ".prose",
+        ".markdown-body",
+        ".documentation",
+        ".docs-content",
+        "main",
+        '[role="main"]',
+        // Framework-specific
+        ".nextra-content",
+        ".docusaurus-content",
+        ".page-inner",
+        ".book-body"
       ];
       return articleIndicators.some((selector) => document.querySelector(selector));
     }

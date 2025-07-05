@@ -75,7 +75,21 @@ export class ReadabilityExtractor {
       '.article-content',
       '.content',
       '#content',
-      'main'
+      'main',
+      // Modern documentation sites
+      '#content-area',
+      '#content-container',
+      '.prose',
+      '.markdown-body',
+      '.documentation',
+      '.docs-content',
+      // Framework-specific selectors
+      '[data-component-part="step-content"]',
+      '.nextra-content',
+      '.docusaurus-content',
+      // GitBook and similar
+      '.page-inner',
+      '.book-body'
     ];
 
     let contentElement: HTMLElement | null = null;

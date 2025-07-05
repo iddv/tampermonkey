@@ -79,7 +79,20 @@ class PersonalWebClipper {
       '.entry',
       '.content',
       '[class*="article"]',
-      '[id*="article"]'
+      '[id*="article"]',
+      // Modern documentation sites
+      '#content-area',
+      '.prose',
+      '.markdown-body',
+      '.documentation',
+      '.docs-content',
+      'main',
+      '[role="main"]',
+      // Framework-specific
+      '.nextra-content',
+      '.docusaurus-content',
+      '.page-inner',
+      '.book-body'
     ];
 
     return articleIndicators.some(selector => document.querySelector(selector));
