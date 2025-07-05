@@ -49,6 +49,19 @@ A powerful Tampermonkey script for clipping web articles and content to local Ma
 
 **Individual Install**: [personal-web-clipper.user.js](https://github.com/iddv/tampermonkey/raw/main/dist/personal-web-clipper.user.js)
 
+### [🎥 YouTube Clean Player](./youtube-clean-player/)
+A performant userscript that enhances your YouTube viewing experience by removing distractions and unwanted content.
+
+**Features:**
+- Redirects YouTube Shorts to regular video format
+- Hides end-screen suggestions and video overlays
+- Removes Shorts from feeds, search results, and channel pages
+- Configurable settings with toggle commands
+- Efficient YouTube SPA navigation handling
+- Clean, distraction-free viewing experience
+
+**Individual Install**: [youtube-clean-player.user.js](https://github.com/iddv/tampermonkey/raw/main/dist/youtube-clean-player.user.js)
+
 ---
 
 ## 🛠️ Development
