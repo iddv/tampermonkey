@@ -1,0 +1,26 @@
+{
+  "version": "1.0.0",
+  "projects": [
+    {
+      "name": "Test Project",
+      "description": "A simple test project to verify the research pipeline",
+      "research_topic": "Modern web development practices",
+      "known_issues": [
+        "Need to understand current trends"
+      ],
+      "focus_areas": [
+        "Performance optimization",
+        "Security best practices"
+      ]
+    }
+  ],
+  "decomposition_strategy": {
+    "model": "openai/gpt-4o-mini",
+    "temperature": 0.3,
+    "max_tokens": 1000,
+    "default_sub_topic_count": 4
+  },
+  "research_prompts": {
+    "worker_prompt_template": "You are a specialized research agent. Conduct thorough research on the given topic and provide actionable insights with source citations."
+  }
+}
