@@ -5,6 +5,7 @@
   "private": true,
   "workspaces": [
     "llm-judge",
+    "personal-web-clipper",
     "*/desktop-app"
   ],
   "scripts": {

@@ -27,6 +27,12 @@ jobs:
     - name: Build LLM Judge script
       run: npm run build --prefix llm-judge
 
+    - name: Install Personal Web Clipper dependencies
+      run: npm install --prefix personal-web-clipper
+
+    - name: Build Personal Web Clipper script
+      run: npm run build --prefix personal-web-clipper
+
     - name: Prepare dist directory
       run: |
         mkdir -p dist
@@ -37,6 +43,12 @@ jobs:
         else
           echo "Warning: LLM Judge build output not found"
         fi
+        # Copy the built Personal Web Clipper script
+        if [ -f personal-web-clipper/dist/personal-web-clipper-userscript.user.js ]; then
+          cp personal-web-clipper/dist/personal-web-clipper-userscript.user.js dist/personal-web-clipper.user.js
+        else
+          echo "Warning: Personal Web Clipper build output not found"
+        fi
 
     - name: Generate Collection Script
       run: |
@@ -45,7 +57,7 @@ jobs:
         // @name         IDDV's Tampermonkey Collection
         // @namespace    https://github.com/iddv/tampermonkey
         // @version      1.0.0
-        // @description  One-click installer for AWS Role Launcher and LLM Judge userscripts
+        // @description  One-click installer for AWS Role Launcher, LLM Judge, and Personal Web Clipper userscripts
         // @author       IDDV
         // @match        *://*.amazon.com/*
         // @match        *://*.amazonaws.com/*
@@ -62,6 +74,7 @@ jobs:
         // @updateURL    https://github.com/iddv/tampermonkey/raw/main/dist/tampermonkey-collection.user.js
         // @require      https://github.com/iddv/tampermonkey/raw/main/dist/aws-role-federation.user.js
         // @require      https://github.com/iddv/tampermonkey/raw/main/dist/llm-judge.user.js
+        // @require      https://github.com/iddv/tampermonkey/raw/main/dist/personal-web-clipper.user.js
         // ==/UserScript==
 
         (function() {
@@ -69,12 +82,12 @@ jobs:
             
             // Collection script loaded - individual scripts will initialize themselves
             console.log('🚀 IDDV Tampermonkey Collection loaded successfully!');
-            console.log('📦 Included scripts: AWS Role Launcher, LLM Judge');
+            console.log('📦 Included scripts: AWS Role Launcher, LLM Judge, Personal Web Clipper');
             
             // Optional: Add a menu command to show info about loaded scripts
             if (typeof GM_registerMenuCommand !== 'undefined') {
                 GM_registerMenuCommand('ℹ️ About Collection', () => {
-                    alert('IDDV Tampermonkey Collection v1.0.0\n\nLoaded Scripts:\n• AWS Role Launcher - Quick AWS role switching\n• LLM Judge - AI content evaluation\n\nRepository: https://github.com/iddv/tampermonkey');
+                    alert('IDDV Tampermonkey Collection v1.0.0\n\nLoaded Scripts:\n• AWS Role Launcher - Quick AWS role switching\n• LLM Judge - AI content evaluation\n• Personal Web Clipper - Save articles to local Markdown files\n\nRepository: https://github.com/iddv/tampermonkey');
                 });
             }
         })();
@@ -109,6 +122,7 @@ jobs:
           ### Individual Scripts
           - [AWS Role Launcher](https://github.com/iddv/tampermonkey/raw/main/dist/aws-role-federation.user.js)
           - [LLM Judge](https://github.com/iddv/tampermonkey/raw/main/dist/llm-judge.user.js)
+          - [Personal Web Clipper](https://github.com/iddv/tampermonkey/raw/main/dist/personal-web-clipper.user.js)
           
           ### Installation Instructions
           1. Make sure you have [Tampermonkey](https://www.tampermonkey.net/) installed
