@@ -90,6 +90,12 @@ temp/
 ehthumbs.db
 Thumbs.db
 
+# IDE and tool configurations
+.claude/
+
+# Windows alternate data stream files
+*:[Zz]one.[Ii]dentifier
+
 # Electron build outputs
 */dist/
 */build/
