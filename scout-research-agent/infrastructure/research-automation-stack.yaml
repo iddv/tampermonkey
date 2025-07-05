@@ -1,0 +1,493 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Scout - Automated Research Intelligence System for Software Projects'
+
+Parameters:
+  Environment:
+    Type: String
+    Default: dev
+    AllowedValues: [dev, staging, prod]
+    Description: Environment name
+    
+  ProjectName:
+    Type: String
+    Default: research-automation
+    Description: Project name used for resource naming
+    
+  GitHubRepoUrl:
+    Type: String
+    Description: GitHub repository URL for configuration (must be public)
+    Default: "https://api.github.com/repos/yourusername/yourrepo/contents"
+    
+  ResearchScheduleExpression:
+    Type: String
+    Default: "cron(0 9 * * ? *)"
+    Description: CloudWatch Events schedule for research orchestrator (daily at 9 AM UTC)
+    
+  SynthesisScheduleExpression:
+    Type: String
+    Default: "cron(30 9 * * ? *)"
+    Description: CloudWatch Events schedule for synthesis (30 minutes after research - fallback only)
+
+Resources:
+  # Enhanced Parameter Store entries for API keys
+  OpenAIApiKeyParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub "/research-bot/openai-api-key"
+      Type: SecureString
+      Value: "REPLACE_WITH_YOUR_OPENAI_API_KEY"
+      Description: "OpenAI API key for research decomposition"
+      
+  TavilyApiKeyParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub "/research-bot/tavily-api-key" 
+      Type: SecureString
+      Value: "REPLACE_WITH_YOUR_TAVILY_API_KEY"
+      Description: "Tavily API key for web search"
+
+  # Enhanced S3 bucket with structured paths and encryption
+  ResearchS3Bucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "${ProjectName}-research-data-${Environment}-${AWS::AccountId}"
+      VersioningConfiguration:
+        Status: Enabled
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+            BucketKeyEnabled: true
+      LifecycleConfiguration:
+        Rules:
+          - Id: DeleteOldResearchData
+            Status: Enabled
+            ExpirationInDays: 90
+            NoncurrentVersionExpirationInDays: 30
+          - Id: TransitionToIA
+            Status: Enabled
+            TransitionInDays: 30
+            StorageClass: STANDARD_IA
+
+  # Enhanced SQS queue with DLQ and encryption
+  ResearchTasksQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub "${ProjectName}-research-tasks-${Environment}"
+      VisibilityTimeoutSeconds: 960  # 16 minutes (slightly longer than Lambda timeout)
+      MessageRetentionPeriod: 1209600  # 14 days
+      SqsManagedSseEnabled: true  # Enable server-side encryption
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt ResearchTasksDLQ.Arn
+        maxReceiveCount: 3
+      
+  ResearchTasksDLQ:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub "${ProjectName}-research-tasks-dlq-${Environment}"
+      MessageRetentionPeriod: 1209600  # 14 days
+      SqsManagedSseEnabled: true  # Enable server-side encryption
+
+  # Enhanced IAM role for research orchestrator
+  ResearchOrchestratorRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${ProjectName}-orchestrator-role-${Environment}"
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: ResearchOrchestratorPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:PutObject
+                Resource:
+                  - !Sub "${ResearchS3Bucket}/research/*"
+              - Effect: Allow
+                Action:
+                  - sqs:SendMessage
+                  - sqs:GetQueueAttributes
+                Resource: !GetAtt ResearchTasksQueue.Arn
+              - Effect: Allow
+                Action:
+                  - ssm:GetParameter
+                Resource:
+                  - !Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/research-bot/openai-api-key"
+
+  # Enhanced IAM role for research workers
+  ResearchWorkerRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${ProjectName}-worker-role-${Environment}"
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: ResearchWorkerPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:PutObject
+                Resource:
+                  - !Sub "${ResearchS3Bucket}/research/*/success/*"
+                  - !Sub "${ResearchS3Bucket}/research/*/failed/*"
+              - Effect: Allow
+                Action:
+                  - sqs:ReceiveMessage
+                  - sqs:DeleteMessage
+                  - sqs:GetQueueAttributes
+                Resource: !GetAtt ResearchTasksQueue.Arn
+              - Effect: Allow
+                Action:
+                  - ssm:GetParameter
+                Resource:
+                  - !Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/research-bot/tavily-api-key"
+              - Effect: Allow
+                Action:
+                  - bedrock:InvokeModel
+                Resource: 
+                  - !Sub "arn:aws:bedrock:${AWS::Region}::foundation-model/anthropic.claude-3-haiku-20240307-v1:0"
+                  - !Sub "arn:aws:bedrock:${AWS::Region}::foundation-model/anthropic.claude-3-sonnet-20240229-v1:0"
+
+  # Enhanced IAM role for synthesis
+  SynthesisRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${ProjectName}-synthesis-role-${Environment}"
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: SynthesisPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:ListBucket
+                Resource:
+                  - !Sub "${ResearchS3Bucket}/research/*"
+                  - !Sub "${ResearchS3Bucket}"
+              - Effect: Allow
+                Action:
+                  - s3:PutObject
+                Resource:
+                  - !Sub "${ResearchS3Bucket}/synthesis/*"
+              - Effect: Allow
+                Action:
+                  - ssm:GetParameter
+                Resource:
+                  - !Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/research-bot/openai-api-key"
+              - Effect: Allow
+                Action:
+                  - bedrock:InvokeModel
+                Resource: 
+                  - !Sub "arn:aws:bedrock:${AWS::Region}::foundation-model/anthropic.claude-3-sonnet-20240229-v1:0"
+              - Effect: Allow
+                Action:
+                  - lambda:InvokeFunction
+                Resource: !Sub "arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${ProjectName}-synthesis-${Environment}"
+
+  # Enhanced Lambda function - Research Orchestrator
+  ResearchOrchestratorFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub "${ProjectName}-orchestrator-${Environment}"
+      Runtime: python3.11
+      Handler: research_function.lambda_handler
+      Role: !GetAtt ResearchOrchestratorRole.Arn
+      Timeout: 900  # 15 minutes
+      MemorySize: 1024
+      Architectures:
+        - arm64  # Use ARM64 for better price/performance
+      Code:
+        ZipFile: |
+          # Placeholder - deploy actual code from infrastructure/lambda/research_function.py
+          def lambda_handler(event, context):
+              return {"statusCode": 200, "body": "Placeholder function"}
+      Environment:
+        Variables:
+          S3_BUCKET: !Ref ResearchS3Bucket
+          SQS_QUEUE_URL: !Ref ResearchTasksQueue
+          GITHUB_REPO_URL: !Ref GitHubRepoUrl
+          ENVIRONMENT: !Ref Environment
+          PROJECT_NAME: !Ref ProjectName
+          OPENAI_API_KEY_PARAM: "/research-bot/openai-api-key"
+      
+  # Enhanced Lambda function - Research Worker
+  ResearchWorkerFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub "${ProjectName}-worker-${Environment}"
+      Runtime: python3.11
+      Handler: worker_function.lambda_handler
+      Role: !GetAtt ResearchWorkerRole.Arn
+      Timeout: 900  # 15 minutes
+      MemorySize: 1024
+      ReservedConcurrencyLimit: 5  # Limit concurrent workers to manage costs
+      Architectures:
+        - arm64  # Use ARM64 for better price/performance
+      Code:
+        ZipFile: |
+          # Placeholder - deploy actual code from infrastructure/lambda/worker_function.py
+          def lambda_handler(event, context):
+              return {"statusCode": 200, "body": "Placeholder function"}
+      Environment:
+        Variables:
+          S3_BUCKET: !Ref ResearchS3Bucket
+          BEDROCK_MODEL_ID: "anthropic.claude-3-haiku-20240307-v1:0"
+          TAVILY_API_KEY_PARAM: "/research-bot/tavily-api-key"
+          ENVIRONMENT: !Ref Environment
+          PROJECT_NAME: !Ref ProjectName
+
+  # Enhanced Lambda function - Synthesis
+  SynthesisFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub "${ProjectName}-synthesis-${Environment}"
+      Runtime: python3.11
+      Handler: synthesis_function.lambda_handler
+      Role: !GetAtt SynthesisRole.Arn
+      Timeout: 900  # 15 minutes
+      MemorySize: 2048  # More memory for synthesis
+      Architectures:
+        - arm64  # Use ARM64 for better price/performance
+      Code:
+        ZipFile: |
+          # Placeholder - deploy actual code from infrastructure/lambda/synthesis_function.py
+          def lambda_handler(event, context):
+              return {"statusCode": 200, "body": "Placeholder function"}
+      Environment:
+        Variables:
+          S3_BUCKET: !Ref ResearchS3Bucket
+          SYNTHESIS_BEDROCK_MODEL_ID: "anthropic.claude-3-sonnet-20240229-v1:0"
+          GITHUB_REPO_URL: !Ref GitHubRepoUrl
+          ENVIRONMENT: !Ref Environment
+          PROJECT_NAME: !Ref ProjectName
+
+  # SQS event source mapping for worker function
+  WorkerEventSourceMapping:
+    Type: AWS::Lambda::EventSourceMapping
+    Properties:
+      EventSourceArn: !GetAtt ResearchTasksQueue.Arn
+      FunctionName: !Ref ResearchWorkerFunction
+      BatchSize: 1
+      MaximumBatchingWindowInSeconds: 5
+
+  # CloudWatch Events rule for research orchestrator
+  ResearchScheduleRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: !Sub "${ProjectName}-research-schedule-${Environment}"
+      Description: "Trigger research orchestrator daily"
+      ScheduleExpression: !Ref ResearchScheduleExpression
+      State: ENABLED
+      Targets:
+        - Arn: !GetAtt ResearchOrchestratorFunction.Arn
+          Id: "ResearchOrchestratorTarget"
+
+  # Permission for CloudWatch Events to invoke research orchestrator
+  ResearchSchedulePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref ResearchOrchestratorFunction
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt ResearchScheduleRule.Arn
+
+  # CloudWatch Events rule for synthesis (fallback only - primary trigger is self-invocation)
+  SynthesisScheduleRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: !Sub "${ProjectName}-synthesis-schedule-${Environment}"
+      Description: "Fallback trigger for synthesis function"
+      ScheduleExpression: !Ref SynthesisScheduleExpression
+      State: ENABLED
+      Targets:
+        - Arn: !GetAtt SynthesisFunction.Arn
+          Id: "SynthesisFunctionTarget"
+
+  # Permission for CloudWatch Events to invoke synthesis
+  SynthesisSchedulePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref SynthesisFunction
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt SynthesisScheduleRule.Arn
+
+  # CloudWatch Log Groups with retention policies
+  OrchestratorLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${ProjectName}-orchestrator-${Environment}"
+      RetentionInDays: 30  # Automatic log cleanup to control costs
+
+  WorkerLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${ProjectName}-worker-${Environment}"
+      RetentionInDays: 30  # Automatic log cleanup to control costs
+
+  SynthesisLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${ProjectName}-synthesis-${Environment}"
+      RetentionInDays: 30  # Automatic log cleanup to control costs
+
+  # Enhanced CloudWatch Alarms for monitoring
+  DLQAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub "${ProjectName}-dlq-messages-${Environment}"
+      AlarmDescription: "Alert when messages appear in DLQ"
+      MetricName: ApproximateNumberOfVisibleMessages
+      Namespace: AWS/SQS
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      Dimensions:
+        - Name: QueueName
+          Value: !GetAtt ResearchTasksDLQ.QueueName
+
+  SynthesisErrorAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub "${ProjectName}-synthesis-errors-${Environment}"
+      AlarmDescription: "Alert when synthesis function fails"
+      MetricName: Errors
+      Namespace: AWS/Lambda
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref SynthesisFunction
+
+  # Lambda Duration Percentile Alarms for performance monitoring
+  OrchestratorDurationAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub "${ProjectName}-orchestrator-duration-${Environment}"
+      AlarmDescription: "Alert when orchestrator function duration is unusually high"
+      MetricName: Duration
+      Namespace: AWS/Lambda
+      Statistic: Average
+      Period: 900
+      EvaluationPeriods: 2
+      Threshold: 300000  # 5 minutes in milliseconds
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref ResearchOrchestratorFunction
+
+  WorkerDurationAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub "${ProjectName}-worker-duration-${Environment}"
+      AlarmDescription: "Alert when worker function duration is unusually high"
+      MetricName: Duration
+      Namespace: AWS/Lambda
+      Statistic: Average
+      Period: 900
+      EvaluationPeriods: 2
+      Threshold: 600000  # 10 minutes in milliseconds
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref ResearchWorkerFunction
+
+  # SQS Queue Depth Alarm
+  QueueDepthAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub "${ProjectName}-queue-depth-${Environment}"
+      AlarmDescription: "Alert when SQS queue has too many pending messages"
+      MetricName: ApproximateNumberOfVisibleMessages
+      Namespace: AWS/SQS
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 3
+      Threshold: 10
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: QueueName
+          Value: !GetAtt ResearchTasksQueue.QueueName
+
+Outputs:
+  S3BucketName:
+    Description: "S3 bucket for research data"
+    Value: !Ref ResearchS3Bucket
+    Export:
+      Name: !Sub "${AWS::StackName}-S3Bucket"
+
+  SQSQueueUrl:
+    Description: "SQS queue URL for research tasks"
+    Value: !Ref ResearchTasksQueue
+    Export:
+      Name: !Sub "${AWS::StackName}-SQSQueue"
+
+  DLQUrl:
+    Description: "Dead Letter Queue URL"
+    Value: !Ref ResearchTasksDLQ
+    Export:
+      Name: !Sub "${AWS::StackName}-DLQ"
+
+  OrchestratorFunctionArn:
+    Description: "Research Orchestrator Lambda ARN"
+    Value: !GetAtt ResearchOrchestratorFunction.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-OrchestratorArn"
+
+  WorkerFunctionArn:
+    Description: "Research Worker Lambda ARN"
+    Value: !GetAtt ResearchWorkerFunction.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-WorkerArn"
+
+  SynthesisFunctionArn:
+    Description: "Synthesis Lambda ARN"
+    Value: !GetAtt SynthesisFunction.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-SynthesisArn"
+
+  ParameterStoreInstructions:
+    Description: "Instructions for setting up API keys"
+    Value: !Sub |
+      1. Set OpenAI API key: aws ssm put-parameter --name "/research-bot/openai-api-key" --value "YOUR_OPENAI_KEY" --type "SecureString" --overwrite
+      2. Set Tavily API key: aws ssm put-parameter --name "/research-bot/tavily-api-key" --value "YOUR_TAVILY_KEY" --type "SecureString" --overwrite
+
+ 

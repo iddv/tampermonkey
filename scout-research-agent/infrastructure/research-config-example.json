@@ -1,0 +1,198 @@
+{
+  "version": "2.0.0",
+  "description": "Enhanced Research Configuration - Strands Agents with Intelligent Topic Decomposition",
+  
+  "decomposition_strategy": {
+    "model": "gpt-4o-mini",
+    "temperature": 0.3,
+    "max_tokens": 500,
+    "default_sub_topic_count": 4,
+    "prompt_template": "Break down this research project into specific, focused sub-topics for deep research.\nEach sub-topic should be:\n1. Specific and actionable\n2. Researchable with web search\n3. Focused on a single aspect\n4. Likely to yield concrete insights\n\nReturn ONLY a JSON array of sub-topic strings.",
+    "fallback_topics": [
+      "Current state analysis and market landscape",
+      "Technical implementation best practices",
+      "User experience and design considerations", 
+      "Performance optimization strategies",
+      "Security and reliability improvements"
+    ]
+  },
+
+  "research_prompts": {
+    "worker_prompt_template": "You are a specialized research agent conducting deep research on specific topics.\n\nYour research approach:\n1. Use web_search to find current, authoritative information\n2. Use extract_article_content to get detailed information from key sources\n3. Synthesize findings into comprehensive insights\n4. Always cite sources with URLs\n5. Provide confidence assessments for your findings\n\nFocus on quality over quantity - find the most relevant and current information.",
+    
+    "research_objectives": [
+      "Find current trends and best practices",
+      "Identify specific implementation approaches",
+      "Discover relevant tools and technologies",
+      "Understand common challenges and proven solutions",
+      "Provide actionable recommendations with clear next steps",
+      "Assess feasibility and effort estimates"
+    ],
+    
+    "output_format_requirements": "Structure your research findings clearly:\n1. Start with an executive summary\n2. Provide detailed findings with sources\n3. End with specific, actionable recommendations\n4. Include confidence level for each major finding\n5. Cite all sources with URLs\n6. Highlight any limitations or areas needing further research",
+    
+    "max_iterations": 8
+  },
+
+  "projects": [
+    {
+      "name": "Advanced Web Dashboard",
+      "description": "React-based admin dashboard with real-time analytics, user management, and advanced data visualization capabilities",
+      "project_type": "Web Application",
+      "platform": "React, Node.js, PostgreSQL, Redis",
+      "research_topic": "Performance Optimization and Modern User Experience",
+      "known_issues": [
+        "Dashboard loads slowly with large datasets (>10k records)",
+        "Mobile responsiveness needs improvement for tablet sizes",
+        "Real-time updates cause memory leaks over time",
+        "Search functionality is slow with complex filters"
+      ],
+      "focus_areas": [
+        "Frontend performance optimization",
+        "Database query optimization", 
+        "Mobile UX improvements",
+        "Real-time data streaming",
+        "Accessibility compliance",
+        "Modern React patterns"
+      ]
+    },
+    {
+      "name": "API Gateway & Microservices",
+      "description": "High-throughput API gateway managing authentication, rate limiting, and routing for 20+ microservices",
+      "project_type": "Backend Infrastructure",
+      "platform": "Node.js, Express, Redis, Docker, Kubernetes",
+      "research_topic": "Scalability, Security, and Observability",
+      "known_issues": [
+        "Rate limiting implementation needs to be more sophisticated",
+        "JWT token refresh mechanism causes occasional auth failures",
+        "Service discovery becomes unreliable under high load",
+        "Monitoring and alerting gaps for downstream services"
+      ],
+      "focus_areas": [
+        "API security best practices",
+        "Horizontal scaling strategies",
+        "Service mesh implementation",
+        "Distributed tracing and monitoring",
+        "Circuit breaker patterns",
+        "Container orchestration optimization"
+      ]
+    },
+    {
+      "name": "Cross-Platform Mobile App",
+      "description": "Customer-facing mobile application with offline capabilities, push notifications, and payment processing",
+      "project_type": "Mobile Application", 
+      "platform": "React Native, Firebase, Stripe API",
+      "research_topic": "Cross-Platform Development and Performance",
+      "known_issues": [
+        "App startup time is 3-4 seconds on older devices",
+        "Push notifications delivery is inconsistent (70% success rate)",
+        "Offline sync occasionally creates data conflicts",
+        "Payment flow has high abandonment rate on Android"
+      ],
+      "focus_areas": [
+        "Performance optimization for low-end devices",
+        "Push notification reliability",
+        "Offline-first architecture",
+        "Payment UX optimization",
+        "Cross-platform testing strategies",
+        "App store optimization"
+      ]
+    },
+    {
+      "name": "Data Processing Pipeline",
+      "description": "ETL pipeline processing 100GB+ daily customer data for analytics, ML model training, and real-time reporting",
+      "project_type": "Data Engineering",
+      "platform": "Python, Apache Airflow, Spark, AWS EMR, Snowflake",
+      "research_topic": "Data Processing Efficiency and Reliability",
+      "known_issues": [
+        "Pipeline occasionally fails on datasets larger than 150GB",
+        "Data validation rules need to be more comprehensive",
+        "Processing time increased 40% over the last quarter",
+        "Data lineage tracking is manual and error-prone"
+      ],
+      "focus_areas": [
+        "Big data processing optimization",
+        "Error handling and recovery patterns",
+        "Data quality validation frameworks",
+        "Processing cost optimization",
+        "Real-time vs batch processing strategies",
+        "Data governance and lineage tracking"
+      ]
+    },
+    {
+      "name": "AI-Powered Content Platform",
+      "description": "Content creation and management platform using AI for automated tagging, content recommendations, and moderation",
+      "project_type": "AI/ML Application",
+      "platform": "Python, TensorFlow, FastAPI, PostgreSQL, Redis",
+      "research_topic": "AI Integration and Content Intelligence",
+      "known_issues": [
+        "AI model inference latency is too high for real-time features",
+        "Content recommendation accuracy is below 60%",
+        "Automated moderation has high false positive rate",
+        "Model versioning and rollback process is manual"
+      ],
+      "focus_areas": [
+        "AI model optimization and inference speed",
+        "Recommendation algorithm improvements", 
+        "Content moderation best practices",
+        "MLOps and model lifecycle management",
+        "Ethical AI and bias detection",
+        "Real-time AI feature architectures"
+      ]
+    }
+  ],
+
+  "research_guidelines": {
+    "minimum_confidence_score": 0.7,
+    "max_findings_per_sub_topic": 5,
+    "focus_on_actionable_items": true,
+    "prioritize_security_and_performance": true,
+    "include_modern_best_practices": true,
+    "require_source_citations": true,
+    "preferred_source_types": [
+      "Official documentation",
+      "Technical blogs from reputable companies",
+      "Open source project repositories",
+      "Industry research reports",
+      "Conference presentations and papers"
+    ]
+  },
+
+  "synthesis_settings": {
+    "note": "Enhanced synthesis with manifest-checking pattern (no fixed delays)",
+    "synthesis_model": "anthropic.claude-3-sonnet-20240229-v1:0",
+    "max_report_length": 5000,
+    "minimum_completion_rate": 0.8,
+    "max_retries": 6,
+    "retry_interval_minutes": 5,
+    "comprehensive_report_sections": [
+      "Executive Summary",
+      "Key Findings by Project",
+      "Cross-Project Patterns and Insights", 
+      "Recommended Action Items",
+      "Technology Trends and Implications",
+      "Implementation Roadmap Suggestions",
+      "Research Quality Assessment"
+    ]
+  },
+  
+  "api_configuration": {
+    "note": "API keys are stored in AWS Parameter Store for security - NEVER put actual keys in this public repo",
+    "parameter_store_keys": {
+      "openai_api_key": "/research-bot/openai-api-key",
+      "tavily_api_key": "/research-bot/tavily-api-key"
+    },
+    "bedrock_models": {
+      "research_model": "anthropic.claude-3-haiku-20240307-v1:0",
+      "synthesis_model": "anthropic.claude-3-sonnet-20240229-v1:0"
+    }
+  },
+  
+  "monitoring_and_alerts": {
+    "note": "CloudWatch monitoring configuration",
+    "dead_letter_queue_alarm_threshold": 1,
+    "synthesis_failure_alarm_enabled": true,
+    "research_completion_timeout_hours": 2,
+    "expected_daily_research_runs": 1
+  }
+}

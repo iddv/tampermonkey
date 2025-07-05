@@ -1,0 +1,95 @@
+{
+  "version": "1.0.0",
+  "description": "Research automation configuration for Tampermonkey userscripts",
+  "updated": "2024-01-27",
+  "userscripts": [
+    {
+      "name": "AWS Role Launcher",
+      "description": "Quick access to AWS accounts and roles from anywhere - browser bookmarklet, desktop app, and Tampermonkey script",
+      "target_website": "aws.amazon.com",
+      "research_topic": "AWS Console UI Changes and Authentication Improvements",
+      "known_issues": [
+        "AWS console UI changes may break role detection",
+        "Need to handle new AWS SSO authentication flows"
+      ],
+      "focus_areas": [
+        "AWS Console UI updates",
+        "Authentication flow improvements", 
+        "Cross-browser compatibility",
+        "Performance optimization"
+      ]
+    },
+    {
+      "name": "LLM Judge",
+      "description": "A focused Tampermonkey script for evaluating web content using Large Language Models (OpenAI GPT, Anthropic Claude)",
+      "target_website": "Various websites",
+      "research_topic": "LLM Integration and Content Analysis Improvements",
+      "known_issues": [
+        "API rate limiting challenges",
+        "Content extraction accuracy on complex sites"
+      ],
+      "focus_areas": [
+        "New LLM provider APIs",
+        "Content extraction improvements",
+        "Rate limiting strategies",
+        "Security and privacy enhancements"
+      ]
+    },
+    {
+      "name": "Personal Web Clipper",
+      "description": "A powerful Tampermonkey script for clipping web articles and content to local Markdown files using the modern File System Access API",
+      "target_website": "Various websites",
+      "research_topic": "Web Content Extraction and Local File Management",
+      "known_issues": [
+        "File System Access API browser compatibility",
+        "Complex article extraction on modern SPAs"
+      ],
+      "focus_areas": [
+        "File System Access API improvements",
+        "Article extraction accuracy",
+        "Markdown formatting enhancements",
+        "Cross-browser compatibility"
+      ]
+    },
+    {
+      "name": "YouTube Clean Player",
+      "description": "A performant userscript that enhances your YouTube viewing experience with configurable distraction removal and smart Shorts handling",
+      "target_website": "www.youtube.com",
+      "research_topic": "YouTube Interface Changes and User Experience Improvements",
+      "known_issues": [
+        "YouTube UI changes break element selectors",
+        "Performance issues with large playlists"
+      ],
+      "focus_areas": [
+        "YouTube UI/UX updates",
+        "Performance optimization",
+        "New YouTube features integration",
+        "User preference management"
+      ]
+    }
+  ],
+  "research_guidelines": {
+    "priority_categories": [
+      "Security",
+      "Performance", 
+      "UX",
+      "New Feature",
+      "Compatibility"
+    ],
+    "minimum_confidence_score": 0.7,
+    "max_findings_per_userscript": 5,
+    "preferred_sources": [
+      "MDN Web Docs",
+      "Chrome Developer Documentation",
+      "Firefox Developer Documentation",
+      "W3C Specifications",
+      "GitHub Issues and Discussions"
+    ]
+  },
+  "prompt_engineering": {
+    "temperature": 0.7,
+    "max_tokens": 4096,
+    "response_format": "structured_json",
+    "fallback_behavior": "graceful_degradation"
+  }
+} 
