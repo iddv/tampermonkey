@@ -1,6 +1,6 @@
 {
   "name": "personal-web-clipper-userscript",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "A powerful Tampermonkey script for clipping web content to local Markdown files",
   "type": "module",
   "scripts": {

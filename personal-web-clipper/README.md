@@ -31,8 +31,8 @@ A powerful Tampermonkey userscript that enables you to clip articles and web con
 
 ### Install the Script
 
-1. **One-Click Installation**: [Install Personal Web Clipper](../dist/personal-web-clipper.user.js)
-2. **Manual Installation**: Copy the script content from [`dist/personal-web-clipper.user.js`](../dist/personal-web-clipper.user.js) and paste into Tampermonkey
+1. **One-Click Installation**: [Install Personal Web Clipper](../dist/personal-web-clipper-userscript.user.js)
+2. **Manual Installation**: Copy the script content from [`dist/personal-web-clipper-userscript.user.js`](../dist/personal-web-clipper-userscript.user.js) and paste into Tampermonkey
 
 ### Development Setup
 

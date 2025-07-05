@@ -8,7 +8,7 @@ export default defineConfig({
       userscript: {
         name: 'Personal Web Clipper & Organizer',
         namespace: 'https://github.com/your-username/tampermonkey-scripts',
-        version: '1.0.0',
+        version: '1.1.0',
         description: 'Clip articles and web content to local Markdown files with File System Access API',
         author: 'Tampermonkey Scripts Collection',
         match: [
